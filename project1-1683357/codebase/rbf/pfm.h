@@ -35,7 +35,7 @@ private:
 
 class FileHandle {
 private:
-    FILE *fd;
+    FILE *fd = NULL;
 
 public:
     // variables to keep the counter for each operation
