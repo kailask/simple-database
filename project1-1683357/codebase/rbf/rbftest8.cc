@@ -90,7 +90,8 @@ int RBFTest_8(RecordBasedFileManager *rbfm) {
     
     free(record);
     free(returnedData);
-
+	free(nullsIndicator);
+	
     cout << "RBF Test Case 8 Finished! The result will be examined." << endl << endl;
     
     return 0;

@@ -108,6 +108,8 @@ int RBFTest_9(RecordBasedFileManager *rbfm, vector<RID> &rids, vector<int> &size
 		sizesFile.close();
 	}
         
+    free(nullsIndicator);
+        
     cout << "RBF Test Case 9 Finished! The result will be examined." << endl << endl;
 
     return 0;
