@@ -102,6 +102,8 @@ int RBFTest_12(RecordBasedFileManager *rbfm) {
 
 	cout << "RBF Test Case 12 Finished! The result will be examined." << endl << endl;
 	
+	free(nullsIndicator);
+
 	return 0;
 }
 

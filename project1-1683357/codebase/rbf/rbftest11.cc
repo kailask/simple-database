@@ -95,6 +95,8 @@ int RBFTest_11(RecordBasedFileManager *rbfm) {
 		ridsFile.close();
 	}
 
+	free(nullsIndicator);
+
 	cout << "RBF Test Case 11 Finished! The result will be examined." << endl << endl;
 
 	return 0;

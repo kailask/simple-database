@@ -130,6 +130,7 @@ int RBFTest_10(RecordBasedFileManager *rbfm) {
 
 	remove("test9sizes");
 	remove("test9rids");
+    free(nullsIndicator);
 	
 	return 0;
 }
