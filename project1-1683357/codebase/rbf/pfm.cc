@@ -94,11 +94,12 @@ FileHandle::FileHandle() {
 }
 
 FileHandle::~FileHandle() {
+    fclose(fd);
 }
 
 RC FileHandle::readPage(PageNum pageNum, void *data) {
     int file_no = fileno(fd);
-    if (lseek(file_no, pageNum * PAGE_SIZE, SEEK_SET) == -1) {
+    if (fseek(fd, pageNum * PAGE_SIZE, SEEK_SET) == -1) {
         return -1;
     }
 
@@ -112,7 +113,7 @@ RC FileHandle::readPage(PageNum pageNum, void *data) {
 
 RC FileHandle::writePage(PageNum pageNum, const void *data) {
     int file_no = fileno(fd);
-    if (lseek(file_no, pageNum * PAGE_SIZE, SEEK_SET) == -1) {
+    if (fseek(fd, pageNum * PAGE_SIZE, SEEK_SET) == -1) {
         return -1;
     }
 
@@ -126,7 +127,7 @@ RC FileHandle::writePage(PageNum pageNum, const void *data) {
 
 RC FileHandle::appendPage(const void *data) {
     int file_no = fileno(fd);
-    if (lseek(file_no, 0, SEEK_END) == -1) {
+    if (fseek(fd, 0, SEEK_END) == -1) {
         return -1;
     }
 
