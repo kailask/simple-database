@@ -12,8 +12,8 @@ using namespace std;
 // Record ID
 typedef struct
 {
-    unsigned pageNum;  // page number
-    unsigned slotNum;  // slot number in the page
+    unsigned pageNum; // page number
+    unsigned slotNum; // slot number in the page
 } RID;
 
 // Attribute
@@ -24,26 +24,26 @@ typedef enum { TypeInt = 0,
 typedef unsigned AttrLength;
 
 struct Attribute {
-    string name;        // attribute name
-    AttrType type;      // attribute type
-    AttrLength length;  // attribute length
+    string name;       // attribute name
+    AttrType type;     // attribute type
+    AttrLength length; // attribute length
 };
 
 // Comparison Operator (NOT needed for part 1 of the project)
-typedef enum { EQ_OP = 0,  // no condition// =
-               LT_OP,      // <
-               LE_OP,      // <=
-               GT_OP,      // >
-               GE_OP,      // >=
-               NE_OP,      // !=
-               NO_OP       // no condition
+typedef enum { EQ_OP = 0, // no condition// =
+               LT_OP,     // <
+               LE_OP,     // <=
+               GT_OP,     // >
+               GE_OP,     // >=
+               NE_OP,     // !=
+               NO_OP      // no condition
 } CompOp;
 
 /********************************************************************************
 The scan iterator is NOT required to be implemented for the part 1 of the project 
 ********************************************************************************/
 
-#define RBFM_EOF (-1)  // end of a scan operator
+#define RBFM_EOF (-1) // end of a scan operator
 
 // RBFM_ScanIterator is an iterator to go through records
 // The way to use it is like the following:
@@ -55,7 +55,7 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 //  rbfmScanIterator.close();
 
 class RBFM_ScanIterator {
-   public:
+public:
     RBFM_ScanIterator(){};
     ~RBFM_ScanIterator(){};
 
@@ -67,7 +67,12 @@ class RBFM_ScanIterator {
 };
 
 class RecordBasedFileManager {
-   public:
+public:
+    //helper map
+
+    //helper functions
+    RC getFreePageNum(FileHandle &fileHandle);
+
     static RecordBasedFileManager *instance();
 
     RC createFile(const string &fileName);
@@ -117,17 +122,17 @@ class RecordBasedFileManager {
     RC scan(FileHandle &fileHandle,
             const vector<Attribute> &recordDescriptor,
             const string &conditionAttribute,
-            const CompOp compOp,                   // comparision type such as "<" and "="
-            const void *value,                     // used in the comparison
-            const vector<string> &attributeNames,  // a list of projected attributes
+            const CompOp compOp,                  // comparision type such as "<" and "="
+            const void *value,                    // used in the comparison
+            const vector<string> &attributeNames, // a list of projected attributes
             RBFM_ScanIterator &rbfm_ScanIterator);
 
-   public:
-   protected:
+public:
+protected:
     RecordBasedFileManager();
     ~RecordBasedFileManager();
 
-   private:
+private:
     static RecordBasedFileManager *_rbf_manager;
 };
 

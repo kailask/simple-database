@@ -10,6 +10,7 @@ RecordBasedFileManager *RecordBasedFileManager::instance() {
 }
 
 RecordBasedFileManager::RecordBasedFileManager() {
+    //initialize map of type to length
 }
 
 RecordBasedFileManager::~RecordBasedFileManager() {
@@ -32,7 +33,7 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
 }
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid) {
-    //parse data and package into recordBuff for insertion
+    //parse data and package into recordBuff for insertion, create a map to easily determine length for a particular field
 
     //find the free page to insert into and read page into pageBuff
 
