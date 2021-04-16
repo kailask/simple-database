@@ -32,6 +32,13 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
 }
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid) {
+    //parse data and package into recordBuff for insertion
+
+    //find the free page to insert into and read page into pageBuff
+
+    //insert recordBuff into pageBuff and adjust mini directory, rid
+
+    //write page back into file
     return -1;
 }
 

@@ -134,7 +134,14 @@ RC FileHandle::appendPage(const void *data) {
 }
 
 unsigned FileHandle::getNumberOfPages() {
-    return appendPageCounter;
+    int len;
+    if (fseek(fd, 0, SEEK_END) == -1 ||
+        (len = ftell(fd)) == -1) {
+        perror("getNumberOfPages");
+        return -1; //this might need to change?
+    }
+
+    return len / PAGE_SIZE;
 }
 
 RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
