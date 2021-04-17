@@ -20,6 +20,13 @@ typedef struct
     unsigned slotNum; // slot number in the page
 } RID;
 
+//Packed struct for page slot
+struct Slot {
+    unsigned offset;
+    unsigned length;
+    bool redirect;
+};
+
 // Attribute
 typedef enum { TypeInt = 0,
                TypeReal,
@@ -138,6 +145,12 @@ protected:
 
 private:
     static RecordBasedFileManager *_rbf_manager;
+
+    typedef uint16_t field_offset_t;  //Type for record field offset
+    typedef uint16_t page_offset_t;   //Type for page free space offset
+    typedef uint16_t slot_count_t;    //Type for page count
+
+    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;
 };
 
 #endif
