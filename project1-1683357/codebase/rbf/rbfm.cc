@@ -59,12 +59,10 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
     char *dirStart = &record[nullLength];
 
     //Copy null bitmap
-    memcpy(dest, record, nullLength);
-    dest += nullLength;
-
+    memWrite(dest, record, nullLength);
     char *fieldStart = &record[nullLength + dirLength];
     for (size_t index = 0; index < numFields; index++) {
-        if (record[index / CHAR_BIT] >> (index % CHAR_BIT) & 1) continue;  //Skip if null
+        if (record[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80) continue;  //Skip if null
 
         //Get field offset
         field_offset_t offset;
@@ -75,13 +73,11 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 
         //Copy varchar length
         if (recordDescriptor[index].type == AttrType::TypeVarChar) {
-            memcpy(dest, &fieldLength, sizeof(fieldLength));
-            dest += sizeof(fieldLength);
+            memWrite(dest, &fieldLength, sizeof(fieldLength));
         }
 
         //Copy field
-        memcpy(dest, fieldStart, fieldLength);
-        dest += fieldLength;
+        memWrite(dest, fieldStart, fieldLength);
         fieldStart = fieldEnd;
     }
 
@@ -97,7 +93,7 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
     for (size_t index = 0; index < numFields; index++) {
         cout << recordDescriptor[index].name << ": ";
 
-        if (record[index / CHAR_BIT] >> (index % CHAR_BIT) & 1) {
+        if (record[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80) {
             //Field is null
             cout << "NULL ";
         } else {
@@ -105,28 +101,24 @@ RC RecordBasedFileManager::printRecord(const vector<Attribute> &recordDescriptor
             switch (recordDescriptor[index].type) {
                 case AttrType::TypeInt: {
                     int i;
-                    memcpy(&i, fieldStart, sizeof(i));
-                    fieldStart += sizeof(i);
+                    memRead(&i, fieldStart, sizeof(i));
                     cout << i << " ";
                     break;
                 }
                 case AttrType::TypeReal: {
                     float f;
-                    memcpy(&f, fieldStart, sizeof(f));
-                    fieldStart += sizeof(f);
+                    memRead(&f, fieldStart, sizeof(f));
                     cout << f << " ";
                     break;
                 }
                 case AttrType::TypeVarChar: {
                     //Get length
                     unsigned len;
-                    memcpy(&len, fieldStart, sizeof(len));
-                    fieldStart += sizeof(len);
+                    memRead(&len, fieldStart, sizeof(len));
 
                     //Get string
                     char s[len + 1];
-                    memcpy(s, fieldStart, len);
-                    fieldStart += len;
+                    memRead(s, fieldStart, len);
                     s[len] = '\0';
                     cout << s << " ";
                     break;
@@ -148,4 +140,14 @@ RC RecordBasedFileManager::parseSlot(char *page, unsigned slotNum, Slot &s) cons
     char *slot = &page[slotCountOffset - ((slotNum + 1) * sizeof(Slot))];
     memcpy(&s, slot, sizeof(Slot));  //Assumed to be stored without padding
     return 0;
+}
+
+void RecordBasedFileManager::memWrite(char *&dest, const void *src, size_t len) const {
+    memcpy(dest, src, len);
+    dest += len;
+}
+
+void RecordBasedFileManager::memRead(void *dest, const char *&src, size_t len) const {
+    memcpy(dest, src, len);
+    src += len;
 }
