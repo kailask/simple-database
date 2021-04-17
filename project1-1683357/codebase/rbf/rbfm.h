@@ -4,6 +4,10 @@
 #include <climits>
 #include <string>
 #include <vector>
+#include <math.h>
+#include <bitset>
+#include <string.h>
+
 
 #include "../rbf/pfm.h"
 

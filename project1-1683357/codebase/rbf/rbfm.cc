@@ -33,7 +33,24 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
 }
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid) {
-    //parse data and package into recordBuff for insertion, create a map to easily determine length for a particular field
+    //parse data and package into recordBuff for insertion
+    int totalSize = 0;
+    vector<Attribute> nonNullFields;
+
+    int nullBitSize = ceil((double) recordDescriptor.size() / 8);
+    totalSize += nullBitSize;
+
+    cout << "null bit size is " << nullBitSize << endl;
+    char nullBits[nullBitSize];
+    memcpy(nullBits, data, nullBitSize);
+
+    for(int i = 0; i < nullBitSize; i++) {
+        unsigned length = (i != nullBitSize - 1 ? 8 : recordDescriptor.size() % 8);
+        cout << "the length is " << length << endl;
+        for(long unsigned int i = 0; i < length; ++i) {
+            cout << unsigned(nullBits[i]) << endl;
+        }
+    }
 
     //find the free page to insert into and read page into pageBuff
 
