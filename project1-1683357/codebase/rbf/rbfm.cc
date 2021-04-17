@@ -38,26 +38,57 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
 }
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid) {
-    //parse data and package into recordBuff for insertion
-    int totalSize = 0;
-    vector<Attribute> nonNullFields;
+    //find the size of recordBuff, store the nonNull attributes in order, create the record
+    const char *recordData = static_cast<const char *>(data);
+    ssize_t totalSize = 0;
+    ssize_t numFields = recordDescriptor.size();
+    ssize_t nullLength = ceil((double)recordDescriptor.size() / 8);
+    totalSize += nullLength;
 
-    int nullBitSize = ceil((double) recordDescriptor.size() / 8);
-    totalSize += nullBitSize;
+    //find the total size needed to allocate for the record
+    const char *fieldStart = &recordData[nullLength];
+    for (ssize_t index = 0; index < numFields; index++) {
+        //check if null flag is set
+        if ((recordData[index / CHAR_BIT] << (index % CHAR_BIT) & 128) == 128) continue;  //skip if null
 
-    cout << "null bit size is " << nullBitSize << endl;
-    char nullBits[nullBitSize];
-    memcpy(nullBits, data, nullBitSize);
+        //figure out the type of field
+        switch (recordDescriptor[index].type) {
+            case AttrType::TypeInt: {
+                int i;
+                memcpy(&i, fieldStart, sizeof(i));
+                fieldStart += sizeof(i);
+                totalSize += sizeof(i);
+                break;
+            }
+            case AttrType::TypeReal: {
+                float f;
+                memcpy(&f, fieldStart, sizeof(f));
+                fieldStart += sizeof(f);
+                totalSize += sizeof(f);
+                break;
+            }
+            case AttrType::TypeVarChar: {
+                //Get length
+                unsigned len;
+                memcpy(&len, fieldStart, sizeof(len));
+                fieldStart += sizeof(len);
 
-    for(int i = 0; i < nullBitSize; i++) {
-        unsigned length = (i != nullBitSize - 1 ? 8 : recordDescriptor.size() % 8);
-        cout << "the length is " << length << endl;
-        for(long unsigned int i = 0; i < length; ++i) {
-            cout << unsigned(nullBits[i]) << endl;
+                //Get string
+                char s[len + 1];
+                memcpy(s, fieldStart, len);
+                fieldStart += len;
+                totalSize += len;
+                s[len] = '\0';
+                break;
+            }
+            default:
+                return -1;
         }
+
+        totalSize += sizeof(page_offset_t);
     }
 
-    //find the free page to insert into and read page into pageBuff
+    //find the free page to insert into and read page into pageBuff, if all are full then write a new page
 
     //insert recordBuff into pageBuff and adjust mini directory, rid
 
@@ -173,4 +204,12 @@ RC RecordBasedFileManager::parseSlot(char *page, unsigned slotNum, Slot &s) cons
     char *slot = &page[slotCountOffset - ((slotNum + 1) * sizeof(Slot))];
     memcpy(&s, slot, sizeof(Slot));  //Assumed to be stored without padding
     return 0;
+}
+
+RC RecordBasedFileManager::getFreePageNum(FileHandle &fileHandle) {
+    //first get the last page and check if that has enough space
+
+    //
+    for (ssize_t index = 0; index < fileHandle.getNumberOfPages(); index++) {
+    }
 }

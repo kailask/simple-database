@@ -79,8 +79,6 @@ public:
 
 class RecordBasedFileManager {
 public:
-    //helper map
-
     //helper functions
     RC getFreePageNum(FileHandle &fileHandle);
 
