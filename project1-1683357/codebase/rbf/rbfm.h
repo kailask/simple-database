@@ -1,13 +1,13 @@
 #ifndef _rbfm_h_
 #define _rbfm_h_
 
+#include <math.h>
+#include <string.h>
+
+#include <bitset>
 #include <climits>
 #include <string>
 #include <vector>
-#include <math.h>
-#include <bitset>
-#include <string.h>
-
 
 #include "../rbf/pfm.h"
 
@@ -16,8 +16,8 @@ using namespace std;
 // Record ID
 typedef struct
 {
-    unsigned pageNum; // page number
-    unsigned slotNum; // slot number in the page
+    unsigned pageNum;  // page number
+    unsigned slotNum;  // slot number in the page
 } RID;
 
 //Packed struct for page slot
@@ -35,26 +35,26 @@ typedef enum { TypeInt = 0,
 typedef unsigned AttrLength;
 
 struct Attribute {
-    string name;       // attribute name
-    AttrType type;     // attribute type
-    AttrLength length; // attribute length
+    string name;        // attribute name
+    AttrType type;      // attribute type
+    AttrLength length;  // attribute length
 };
 
 // Comparison Operator (NOT needed for part 1 of the project)
-typedef enum { EQ_OP = 0, // no condition// =
-               LT_OP,     // <
-               LE_OP,     // <=
-               GT_OP,     // >
-               GE_OP,     // >=
-               NE_OP,     // !=
-               NO_OP      // no condition
+typedef enum { EQ_OP = 0,  // no condition// =
+               LT_OP,      // <
+               LE_OP,      // <=
+               GT_OP,      // >
+               GE_OP,      // >=
+               NE_OP,      // !=
+               NO_OP       // no condition
 } CompOp;
 
 /********************************************************************************
 The scan iterator is NOT required to be implemented for the part 1 of the project 
 ********************************************************************************/
 
-#define RBFM_EOF (-1) // end of a scan operator
+#define RBFM_EOF (-1)  // end of a scan operator
 
 // RBFM_ScanIterator is an iterator to go through records
 // The way to use it is like the following:
@@ -66,7 +66,7 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 //  rbfmScanIterator.close();
 
 class RBFM_ScanIterator {
-public:
+   public:
     RBFM_ScanIterator(){};
     ~RBFM_ScanIterator(){};
 
@@ -78,10 +78,7 @@ public:
 };
 
 class RecordBasedFileManager {
-public:
-    //helper functions
-    RC getFreePageNum(FileHandle &fileHandle);
-
+   public:
     static RecordBasedFileManager *instance();
 
     RC createFile(const string &fileName);
@@ -131,26 +128,28 @@ public:
     RC scan(FileHandle &fileHandle,
             const vector<Attribute> &recordDescriptor,
             const string &conditionAttribute,
-            const CompOp compOp,                  // comparision type such as "<" and "="
-            const void *value,                    // used in the comparison
-            const vector<string> &attributeNames, // a list of projected attributes
+            const CompOp compOp,                   // comparision type such as "<" and "="
+            const void *value,                     // used in the comparison
+            const vector<string> &attributeNames,  // a list of projected attributes
             RBFM_ScanIterator &rbfm_ScanIterator);
 
-public:
-protected:
+   public:
+   protected:
     RecordBasedFileManager();
     ~RecordBasedFileManager();
 
-private:
+   private:
     static RecordBasedFileManager *_rbf_manager;
 
     typedef uint16_t field_offset_t;  //Type for record field offset
     typedef uint16_t page_offset_t;   //Type for page free space offset
     typedef uint16_t slot_count_t;    //Type for page count
 
-    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;      //Parse slot data into struct
-    void memWrite(char *&dest, const void *src, size_t len) const;  //memcpy data and increment dest
-    void memRead(void *dest, const char *&src, size_t len) const;   //memcpy data and increment src
+    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                             //Parse slot data into struct
+    void memWrite(char *&dest, const void *src, size_t len) const;                         //memcpy data and increment dest
+    void memRead(void *dest, const char *&src, size_t len) const;                          //memcpy data and increment src
+    RC writeRecord(FileHandle &fileHandle, const void *data, RID &rid, ssize_t len);       //gets an available page in the file
+    RC createRecordPage(FileHandle &fileHandle, const void *data, RID &rid, ssize_t len);  //appends page and adds a mini directory
 };
 
 #endif
