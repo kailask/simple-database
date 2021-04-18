@@ -148,7 +148,9 @@ private:
     typedef uint16_t page_offset_t;   //Type for page free space offset
     typedef uint16_t slot_count_t;    //Type for page count
 
-    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;
+    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;      //Parse slot data into struct
+    void memWrite(char *&dest, const void *src, size_t len) const;  //memcpy data and increment dest
+    void memRead(void *dest, const char *&src, size_t len) const;   //memcpy data and increment src
 };
 
 #endif
