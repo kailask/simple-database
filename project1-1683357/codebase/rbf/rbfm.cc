@@ -39,37 +39,51 @@ RC RecordBasedFileManager::closeFile(FileHandle &fileHandle) {
 
 RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid) {
     //find the size of recordBuff, store the nonNull attributes in order, create the record
-    const char *recordData = static_cast<const char *>(data);
+    const char *dataBuff = static_cast<const char *>(data);
     ssize_t totalSize = 0;
     ssize_t numFields = recordDescriptor.size();
     ssize_t nullLength = ceil((double)recordDescriptor.size() / 8);
     totalSize += nullLength;
-    totalSize += (sizeof(page_offset_t) * numFields);
+    totalSize += (sizeof(field_offset_t) * numFields);
 
-    //find the total size needed to allocate for the record
-    const char *fieldStart = &recordData[nullLength];
+    void *record = malloc(PAGE_SIZE);
+    char *recordBuff = static_cast<char *>(record);
+
+    //copy null flags
+    memWrite(recordBuff, dataBuff, nullLength);
+
+    // copy dummy fieldOffset values to overwrite later
+    field_offset_t fieldOffset = 0;
+    for(ssize_t index = 0; index < numFields; index++) {
+        memWrite(recordBuff, &fieldOffset, sizeof(field_offset_t));
+    }
+
+    //find the total size of record and store contents into recordBuff
+    const char *fieldStart = &dataBuff[nullLength];
     for (ssize_t index = 0; index < numFields; index++) {
         //check if null flag is set
-        if ((recordData[index / CHAR_BIT] << (index % CHAR_BIT) & 128) == 128) continue;  //skip if null
+        if ((dataBuff[index / CHAR_BIT] << (index % CHAR_BIT) & 128) == 128) continue;  //skip if null
 
         //figure out the type of field
         switch (recordDescriptor[index].type) {
             case AttrType::TypeInt: {
-                fieldStart += sizeof(int);
+                memRead(recordBuff, fieldStart, sizeof(int));
+                recordBuff += sizeof(int);
                 totalSize += sizeof(int);
                 break;
             }
             case AttrType::TypeReal: {
-                fieldStart += sizeof(float);
+                memRead(recordBuff, fieldStart, sizeof(float));
+                recordBuff += sizeof(float);
                 totalSize += sizeof(float);
                 break;
             }
             case AttrType::TypeVarChar: {
                 unsigned len;
-                memcpy(&len, fieldStart, sizeof(len));
-                fieldStart += sizeof(len);
+                memRead(&len, fieldStart, sizeof(len));
 
-                fieldStart += len;
+                memRead(recordBuff, fieldStart, len);
+                recordBuff += len;
                 totalSize += len;
                 break;
             }
@@ -79,45 +93,15 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
     }
 
     cout << "total size is " << totalSize << endl;
-
-    //create a temp buffer that holds all the fields in the record
-    const void *data = malloc(totalSize);
-    fieldStart = &recordData[nullLength];
-    for (ssize_t index = 0; index < numFields; index++) {
-        //check if null flag is set
-        if ((recordData[index / CHAR_BIT] << (index % CHAR_BIT) & 128) == 128) continue;  //skip if null
-
-        //figure out the type of field
-        switch (recordDescriptor[index].type) {
-            case AttrType::TypeInt: {
-                fieldStart += sizeof(int);
-                totalSize += sizeof(int);
-                break;
-            }
-            case AttrType::TypeReal: {
-                fieldStart += sizeof(float);
-                totalSize += sizeof(float);
-                break;
-            }
-            case AttrType::TypeVarChar: {
-                unsigned len;
-                memcpy(&len, fieldStart, sizeof(len));
-                fieldStart += sizeof(len);
-
-                fieldStart += len;
-                totalSize += len;
-                break;
-            }
-            default:
-                return -1;
-        }
-    }
+    // cout << "the record is " << recordBuff << endl;
 
     //write record into free page
     // RC res = writeRecord(fileHandle, recordDescriptor, data, rid, totalSize);
 
     //write page back into file
-    return (res == -1 ? -1 : 0);
+    // return (res == -1 ? -1 : 0);
+    free(record);
+    return -1;
 }
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data) {
@@ -222,13 +206,13 @@ RC RecordBasedFileManager::parseSlot(char *page, unsigned slotNum, Slot &s) cons
     return 0;
 }
 
-RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, const void *data, RID &rid, ssize_t len) {
+RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len) {
     //first get the last page and check if that has enough space
     unsigned numPages = fileHandle.getNumberOfPages();
 
     //if there are no pages
     if (numPages == 0) {
-        createRecordPage(fileHandle);
+        // createRecordPage(fileHandle);
         return numPages;
     }
 
@@ -239,7 +223,7 @@ RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, const void *data,
     return -1;
 }
 
-RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, const void *data, RID &rid, ssize_t len) {
+RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len) {
     page_offset_t pageOffset = 0;
     slot_count_t slotCount = 0;
     // Slot s = {
@@ -248,12 +232,14 @@ RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, const void *
     // }
 
     void *page = malloc(PAGE_SIZE);
-    char *data = static_cast<char *>(page);
-    char *miniDirectory = &data[4092];
+    char *dataBuff = static_cast<char *>(page);
+    char *miniDirectory = &dataBuff[4092];
     memWrite(miniDirectory, &pageOffset, 2);
     memWrite(miniDirectory, &slotCount, 2);
     fileHandle.appendPage(page);
     free(page);
+
+    return -1;
 }
 
 void RecordBasedFileManager::memWrite(char *&dest, const void *src, size_t len) const {

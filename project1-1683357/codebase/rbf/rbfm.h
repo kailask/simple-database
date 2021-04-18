@@ -148,8 +148,8 @@ class RecordBasedFileManager {
     RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                             //Parse slot data into struct
     void memWrite(char *&dest, const void *src, size_t len) const;                         //memcpy data and increment dest
     void memRead(void *dest, const char *&src, size_t len) const;                          //memcpy data and increment src
-    RC writeRecord(FileHandle &fileHandle, const void *data, RID &rid, ssize_t len);       //gets an available page in the file
-    RC createRecordPage(FileHandle &fileHandle, const void *data, RID &rid, ssize_t len);  //appends page and adds a mini directory
+    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);       //gets an available page in the file
+    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);  //appends page and adds a mini directory
 };
 
 #endif
