@@ -21,11 +21,11 @@ typedef struct
 } RID;
 
 //Packed struct for page slot
-struct Slot {
+typedef struct __attribute__((__packed__)) {
     unsigned offset;
     unsigned length;
-    bool redirect;
-};
+    char redirect;
+} Slot;
 
 // Attribute
 typedef enum { TypeInt = 0,
@@ -149,7 +149,7 @@ class RecordBasedFileManager {
     void memWrite(char *&dest, const void *src, size_t len) const;                         //memcpy data and increment dest
     void memRead(void *dest, const char *&src, size_t len) const;                          //memcpy data and increment src
     RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);       //gets an available page in the file
-    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);  //appends page and adds a mini directory
+    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);  //appends page and adds a mini directory
 };
 
 #endif

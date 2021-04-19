@@ -60,9 +60,14 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
 
     //find the total size of record and store contents into recordBuff
     const char *fieldStart = &dataBuff[nullLength];
+    fieldOffset = nullLength + (sizeof(field_offset_t) * numFields);
+    char *fieldBuff = recordBuff - (sizeof(field_offset_t) * numFields);
     for (ssize_t index = 0; index < numFields; index++) {
         //check if null flag is set
-        if ((dataBuff[index / CHAR_BIT] << (index % CHAR_BIT) & 128) == 128) continue;  //skip if null
+        if ((dataBuff[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80)) {
+            memWrite(fieldBuff, &fieldOffset, sizeof(field_offset_t));
+            continue;  //skip if null
+        } 
 
         //figure out the type of field
         switch (recordDescriptor[index].type) {
@@ -70,12 +75,18 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
                 memRead(recordBuff, fieldStart, sizeof(int));
                 recordBuff += sizeof(int);
                 totalSize += sizeof(int);
+
+                fieldOffset += sizeof(int);
+                memWrite(fieldBuff, &fieldOffset, sizeof(field_offset_t));
                 break;
             }
             case AttrType::TypeReal: {
                 memRead(recordBuff, fieldStart, sizeof(float));
                 recordBuff += sizeof(float);
                 totalSize += sizeof(float);
+
+                fieldOffset += sizeof(float);
+                memWrite(fieldBuff, &fieldOffset, sizeof(field_offset_t));
                 break;
             }
             case AttrType::TypeVarChar: {
@@ -85,6 +96,9 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
                 memRead(recordBuff, fieldStart, len);
                 recordBuff += len;
                 totalSize += len;
+                fieldOffset += len;
+
+                memWrite(fieldBuff, &fieldOffset, sizeof(field_offset_t));
                 break;
             }
             default:
@@ -93,15 +107,14 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
     }
 
     cout << "total size is " << totalSize << endl;
-    // cout << "the record is " << recordBuff << endl;
 
     //write record into free page
-    // RC res = writeRecord(fileHandle, recordDescriptor, data, rid, totalSize);
+    RC res = writeRecord(fileHandle, record, rid, totalSize);
+
+    free(record);
 
     //write page back into file
-    // return (res == -1 ? -1 : 0);
-    free(record);
-    return -1;
+    return (res == -1 ? -1 : 0);
 }
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data) {
@@ -212,34 +225,62 @@ RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, void *data, RID &
 
     //if there are no pages
     if (numPages == 0) {
-        // createRecordPage(fileHandle);
-        return numPages;
+        return createRecordPage(fileHandle, data, rid, len, 0);
     }
 
-    //
+    //if there are pages check the last one
+    
+
+
+    //if thats full iterate through all pages
     // for (ssize_t index = 0; index < fileHandle.getNumberOfPages(); index++) {
     // }
 
-    return -1;
+    //if you are outside the for loop the create a new page since all are not sufficient enough to store record
+
+    return 0;
 }
 
-RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len) {
-    page_offset_t pageOffset = 0;
-    slot_count_t slotCount = 0;
-    // Slot s = {
-    //     0,
+RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum) {
+    page_offset_t pageOffset = len;
+    slot_count_t slotCount = 1;
+    Slot s = {
+        (unsigned) 0,
+        (unsigned) pageOffset,
+        0
+    };
 
-    // }
-
+    //create buffer
     void *page = malloc(PAGE_SIZE);
-    char *dataBuff = static_cast<char *>(page);
-    char *miniDirectory = &dataBuff[4092];
-    memWrite(miniDirectory, &pageOffset, 2);
-    memWrite(miniDirectory, &slotCount, 2);
-    fileHandle.appendPage(page);
+    char *pageBuff = static_cast<char *>(page);
+
+    //write record into page
+    memcpy(pageBuff, data, len);
+
+    //create mini directory
+    unsigned offset = PAGE_SIZE - sizeof(page_offset_t) - sizeof(slot_count_t) - sizeof(Slot);
+
+    cout << "the size of Slot is " << sizeof(Slot) << endl;
+
+    cout << "offset is " << offset << endl;
+
+    char *miniDirectory = &pageBuff[offset];
+    memWrite(miniDirectory, &s, sizeof(Slot));
+    memWrite(miniDirectory, &slotCount, sizeof(slot_count_t));
+    memWrite(miniDirectory, &pageOffset, sizeof(page_offset_t));
+
+    //append page
+    if(fileHandle.appendPage(page) != 0) {
+        return -1;
+    }
+
+    //update rid
+    rid.pageNum = pageNum;
+    rid.slotNum = 0;
+
     free(page);
 
-    return -1;
+    return 0;
 }
 
 void RecordBasedFileManager::memWrite(char *&dest, const void *src, size_t len) const {
