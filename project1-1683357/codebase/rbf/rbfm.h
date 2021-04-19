@@ -150,8 +150,7 @@ class RecordBasedFileManager {
     void memRead(void *dest, const char *&src, size_t len) const;                          //memcpy data and increment src
     RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);       //gets an available page in the file
     RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);  //appends page and adds a mini directory
-    bool isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len);
-    RC appendRecord(FileHandle &fileHandle, unsigned pageNum, ssize_t len);
+    bool isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);
 };
 
 #endif
