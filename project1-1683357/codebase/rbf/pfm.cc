@@ -97,8 +97,9 @@ FileHandle::~FileHandle() {
 }
 
 RC FileHandle::readPage(PageNum pageNum, void *data) {
-    if ((getNumberOfPages() == pageNum && pageNum != 0) ||
-        getNumberOfPages() < pageNum ||
+    unsigned numPages = getNumberOfPages();
+    if ((numPages == pageNum && pageNum != 0) ||
+        numPages < pageNum ||
         fseek(fd, pageNum * PAGE_SIZE, SEEK_SET) == -1 ||
         fread(data, PAGE_SIZE, 1, fd) != 1) {
         perror("readPage");
@@ -110,8 +111,9 @@ RC FileHandle::readPage(PageNum pageNum, void *data) {
 }
 
 RC FileHandle::writePage(PageNum pageNum, const void *data) {
-    if ((getNumberOfPages() == pageNum && pageNum != 0) ||
-        getNumberOfPages() < pageNum ||
+    unsigned numPages = getNumberOfPages();
+    if ((numPages == pageNum && pageNum != 0) ||
+        numPages < pageNum ||
         fseek(fd, pageNum * PAGE_SIZE, SEEK_SET) == -1 ||
         fwrite(data, PAGE_SIZE, 1, fd) != 1) {
         perror("writePage");
@@ -134,7 +136,14 @@ RC FileHandle::appendPage(const void *data) {
 }
 
 unsigned FileHandle::getNumberOfPages() {
-    return appendPageCounter;
+    int len;
+    if (fseek(fd, 0, SEEK_END) == -1 ||
+        (len = ftell(fd)) == -1) {
+        perror("getNumberOfPages");
+        return -1; //this might need to change?
+    }
+
+    return len / PAGE_SIZE;
 }
 
 RC FileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {

@@ -1,6 +1,10 @@
 #ifndef _rbfm_h_
 #define _rbfm_h_
 
+#include <math.h>
+#include <string.h>
+
+#include <bitset>
 #include <climits>
 #include <string>
 #include <vector>
@@ -15,6 +19,13 @@ typedef struct
     unsigned pageNum;  // page number
     unsigned slotNum;  // slot number in the page
 } RID;
+
+//Packed struct for page slot
+typedef struct __attribute__((__packed__)) {
+    unsigned offset;
+    unsigned length;
+    char redirect;
+} Slot;
 
 // Attribute
 typedef enum { TypeInt = 0,
@@ -129,6 +140,17 @@ class RecordBasedFileManager {
 
    private:
     static RecordBasedFileManager *_rbf_manager;
+
+    typedef uint16_t field_offset_t;  //Type for record field offset
+    typedef uint16_t page_offset_t;   //Type for page free space offset
+    typedef uint16_t slot_count_t;    //Type for page count
+
+    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                             //Parse slot data into struct
+    void memWrite(char *&dest, const void *src, size_t len) const;                         //memcpy data and increment dest
+    void memRead(void *dest, const char *&src, size_t len) const;                          //memcpy data and increment src
+    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);       //gets an available page in the file
+    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);  //appends page and adds a mini directory
+    bool isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);
 };
 
 #endif
