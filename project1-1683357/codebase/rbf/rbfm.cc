@@ -106,7 +106,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
         }
     }
 
-    cout << "inserted record size is " << totalSize << endl;
+    // cout << "inserted record size is " << totalSize << endl;
 
     //write record into free page
     RC res = writeRecord(fileHandle, record, rid, totalSize);
@@ -233,14 +233,15 @@ RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, void *data, RID &
         return 0;
     }
 
-
     //if thats full iterate through all pages
-    // for (ssize_t index = 0; index < fileHandle.getNumberOfPages(); index++) {
-    // }
+    for (ssize_t index = 0; index < fileHandle.getNumberOfPages() - 1; index++) {
+        if(isValidPage(fileHandle, index, len, data, rid)) {
+            return 0;
+        }
+    }
 
-    //if you are outside the for loop the create a new page since all are not sufficient enough to store record
-
-    return -1;
+    //if you are outside the for loop then create a new page since all are not sufficient enough to store record
+    return createRecordPage(fileHandle, data, rid, len, numPages);
 }
 
 RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum) {
@@ -274,15 +275,13 @@ RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, 
 
     //update rid
     rid.pageNum = pageNum;
-    rid.slotNum = 1;
+    rid.slotNum = 0;
 
     //free
     free(page);
 
-    cout << "Page number is " << pageNum << endl;
-    cout << "Page offset is " << pageOffset << endl;
-    cout << "Slot number is " << rid.slotNum << endl;
-    cout << endl;
+    // cout << "Page number is " << pageNum << " Page offset is " << pageOffset << " Slot number is " << rid.slotNum << endl;
+    // cout << endl;
 
     return 0;
 }
@@ -315,11 +314,8 @@ bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNu
 
     ssize_t totalSize = PAGE_SIZE - pageOffset - (sizeof(slot_count_t) + sizeof(page_offset_t) + (slotCount * sizeof(Slot)));
 
-    cout << "Before free space is " << totalSize << endl;
-    cout << "Before page number is " << pageNum << endl;
-    cout << "Before page offset is " << pageOffset << endl;
-    cout << "Before slot number is " << slotCount << endl;
-    cout << endl;
+    // cout << "Before free space is " << totalSize << " Page number is " << pageNum << " Page offset is " << pageOffset << " Slot count is " << slotCount << endl;
+    // cout << endl;
 
     //if there is enough space write record and write page
     if(totalSize >= len + sizeof(Slot)) {
@@ -351,7 +347,7 @@ bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNu
 
         //update rid
         rid.pageNum = pageNum;
-        rid.slotNum = slotCount_;
+        rid.slotNum = slotCount_ - 1;
 
         //free
         free(page);
@@ -362,5 +358,6 @@ bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNu
     //free
     free(page);
     
+    //there was not enough space
     return false;
 }
