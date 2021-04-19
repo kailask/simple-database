@@ -296,7 +296,9 @@ void RecordBasedFileManager::memRead(void *dest, const char *&src, size_t len) c
 }
 
 bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len) {
-    //read directly from page in fileHandle
+    //read page into buffer
+    void *page = malloc(PAGE_SIZE)
+
 
     //calculate free space
 
