@@ -229,7 +229,9 @@ RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, void *data, RID &
     }
 
     //if there are pages check the last one
-    
+    if(isValidPage(fileHandle, numPages - 1)) {
+
+    }
 
 
     //if thats full iterate through all pages
@@ -291,4 +293,20 @@ void RecordBasedFileManager::memWrite(char *&dest, const void *src, size_t len) 
 void RecordBasedFileManager::memRead(void *dest, const char *&src, size_t len) const {
     memcpy(dest, src, len);
     src += len;
+}
+
+bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len) {
+    //read directly from page in fileHandle
+
+    //calculate free space
+
+    //return whether page can fit record
+}
+
+RC RecordBasedFileManager::appendRecord(FileHandle &fileHandle, unsigned pageNum, ssize_t len) {
+    //read page
+
+    //write to the page
+
+    //write into file
 }
