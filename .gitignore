@@ -37,3 +37,4 @@
 rbftest*
 .devcontainer
 *.txt
+.editorconfig
