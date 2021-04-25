@@ -36,4 +36,3 @@
 *.test.sh
 rbftest*
 .devcontainer
-*.txt

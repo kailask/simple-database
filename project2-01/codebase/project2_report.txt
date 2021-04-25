@@ -1,0 +1,44 @@
+1. Basic information
+
+Team Number: 
+Student ID# of Submitter:
+Name of Submitter: 
+ID#s and Names for others on the Team
+
+
+2. Catalogs/Metadata
+
+- Show your catalog design (Tables and Columns tables), and the information about each column in those catalogs.
+- How do you distinguish catalogs (which can't be changed by Insert, Update and Delete statements) from other tables?
+
+
+3. Internal Record Format
+
+- Show your record format design, and describe how your design satisfies O(1) field access. If not, just mention that your team hasn't implemented this feature.
+- Describe how you store a VarChar field.
+- Describe how you deal with update of a VarChar field.
+
+
+4. Page Format
+
+- Show your page format design.
+- Describe how you deal with update of a record.
+- Describe how you deal with delete of a record.
+
+
+5. File Format
+
+- Show your file format design.
+
+
+6. Implementation Detail
+
+Other implementation details goes here.  For example:  
+- Describe your use of Forwarding Addresses, including what happens when a Forwarding Address needs to be forwarded yet again to another page.
+- Describe how a scan is done, touching each record exactly once even when there are Forwarding Addresses.
+- Describe how you determine that a previously slot on a page is empty (after record is deleted), so that the slot can be re-used for another record.  (Yes, a record's rid is supposed to be permanent, but only while the record exists.)
+
+
+7. Other (optional)
+
+- Freely use this section to tell us about things that are related to the project 2, but not related to the other sections, such as design and implementation information for the Advanced (Extra Credit) Features, if you've implemented them (optional).
