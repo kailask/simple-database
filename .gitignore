@@ -36,3 +36,4 @@
 *.test.sh
 rbftest*
 .devcontainer
+.editorconfig
