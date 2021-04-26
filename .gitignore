@@ -33,7 +33,7 @@
 
 .DS_Store
 .vscode
-*.test.sh
+*.sh
 rbftest*
 .devcontainer
 .editorconfig
