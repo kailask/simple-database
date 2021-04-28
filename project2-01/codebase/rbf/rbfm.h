@@ -22,10 +22,21 @@ typedef struct
 
 //Packed struct for page slot
 typedef struct __attribute__((__packed__)) {
-    unsigned offset;
+    signed offset;
     unsigned length;
-    char redirect;
 } Slot;
+
+typedef uint16_t field_offset_t;  //Type for record field offset
+typedef uint16_t page_offset_t;   //Type for page free space offset
+typedef uint16_t slot_count_t;    //Type for page count
+typedef uint16_t slot_offset_t;   //Type for free slot offset
+
+//Packed struct for mini directory
+typedef struct __attribute__((__packed__)) {
+    slot_offset_t slotOffset;
+    slot_count_t slotCount;
+    page_offset_t pageOffset;
+} MiniDirectory;
 
 // Attribute
 typedef enum { TypeInt = 0,
@@ -141,16 +152,12 @@ class RecordBasedFileManager {
    private:
     static RecordBasedFileManager *_rbf_manager;
 
-    typedef uint16_t field_offset_t;  //Type for record field offset
-    typedef uint16_t page_offset_t;   //Type for page free space offset
-    typedef uint16_t slot_count_t;    //Type for page count
-
-    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                             //Parse slot data into struct
-    void memWrite(char *&dest, const void *src, size_t len) const;                         //memcpy data and increment dest
-    void memRead(void *dest, const char *&src, size_t len) const;                          //memcpy data and increment src
-    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);       //gets an available page in the file
+    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                                         //Parse slot data into struct
+    void memWrite(char *&dest, const void *src, size_t len) const;                                     //memcpy data and increment dest
+    void memRead(void *dest, const char *&src, size_t len) const;                                      //memcpy data and increment src
+    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);                         //write the record into a free page
     RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);  //appends page and adds a mini directory
-    bool isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);
+    bool isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);     //check if a page is free, if so write record to the page
 };
 
 #endif

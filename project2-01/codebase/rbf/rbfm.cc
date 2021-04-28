@@ -54,7 +54,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
 
     // copy dummy fieldOffset values to overwrite later
     field_offset_t fieldOffset = 0;
-    for(ssize_t index = 0; index < numFields; index++) {
+    for (ssize_t index = 0; index < numFields; index++) {
         memWrite(recordBuff, &fieldOffset, sizeof(field_offset_t));
     }
 
@@ -67,7 +67,7 @@ RC RecordBasedFileManager::insertRecord(FileHandle &fileHandle, const vector<Att
         if ((dataBuff[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80)) {
             memWrite(fieldBuff, &fieldOffset, sizeof(field_offset_t));
             continue;  //skip if null
-        } 
+        }
 
         //figure out the type of field
         switch (recordDescriptor[index].type) {
@@ -125,9 +125,9 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 
     Slot s{};
     ret = parseSlot(page, rid.slotNum, s);
-    if (ret != 0) return -1;                                                                      //Slot number is invalid
-    if (s.redirect) return readRecord(fileHandle, recordDescriptor, {s.offset, s.length}, data);  //Slot was moved
-    if (s.length == 0) return -1;                                                                 //Slot was deleted
+    if (ret != 0) return -1;                                                                                         //Slot number is invalid
+    if (s.offset < 0) return readRecord(fileHandle, recordDescriptor, {(unsigned)(s.offset * -1), s.length}, data);  //Slot was moved
+    if (s.length == 0) return -1;                                                                                    //Slot was deleted
 
     char *record = &page[s.offset];
     size_t numFields = recordDescriptor.size();
@@ -214,7 +214,7 @@ RC RecordBasedFileManager::parseSlot(char *page, unsigned slotNum, Slot &s) cons
     slot_count_t *slotCount = reinterpret_cast<slot_count_t *>(&page[slotCountOffset]);  //Assumed to be half-word aligned
     if (slotNum >= *slotCount) return -1;                                                //Invalid slot
 
-    char *slot = &page[slotCountOffset - ((slotNum + 1) * sizeof(Slot))];
+    char *slot = &page[slotCountOffset - sizeof(slot_offset_t) - ((slotNum + 1) * sizeof(Slot))];
     memcpy(&s, slot, sizeof(Slot));  //Assumed to be stored without padding
     return 0;
 }
@@ -229,13 +229,13 @@ RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, void *data, RID &
     }
 
     //if there are pages check the last one
-    if(isValidPage(fileHandle, numPages - 1, len, data, rid)) {
+    if (isValidPage(fileHandle, numPages - 1, len, data, rid)) {
         return 0;
     }
 
     //if thats full iterate through all pages
     for (ssize_t index = 0; index < fileHandle.getNumberOfPages() - 1; index++) {
-        if(isValidPage(fileHandle, index, len, data, rid)) {
+        if (isValidPage(fileHandle, index, len, data, rid)) {
             return 0;
         }
     }
@@ -245,13 +245,14 @@ RC RecordBasedFileManager::writeRecord(FileHandle &fileHandle, void *data, RID &
 }
 
 RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum) {
-    page_offset_t pageOffset = len;
-    slot_count_t slotCount = 1;
+    MiniDirectory m = {
+        PAGE_SIZE - (sizeof(MiniDirectory) + (2 * sizeof(Slot))),
+        1,
+        static_cast<page_offset_t>(len)};
+
     Slot s = {
-        (unsigned) 0,
-        (unsigned) len,
-        0
-    };
+        0,
+        (unsigned)len};
 
     //create buffer
     void *page = malloc(PAGE_SIZE);
@@ -261,15 +262,13 @@ RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, 
     memcpy(pageBuff, data, len);
 
     //create mini directory
-    unsigned offset = PAGE_SIZE - sizeof(page_offset_t) - sizeof(slot_count_t) - sizeof(Slot);
-
+    unsigned offset = PAGE_SIZE - sizeof(MiniDirectory) - sizeof(Slot);
     char *miniDirectory = &pageBuff[offset];
     memWrite(miniDirectory, &s, sizeof(Slot));
-    memWrite(miniDirectory, &slotCount, sizeof(slot_count_t));
-    memWrite(miniDirectory, &pageOffset, sizeof(page_offset_t));
+    memWrite(miniDirectory, &m, sizeof(MiniDirectory));
 
     //append page
-    if(fileHandle.appendPage(page) != 0) {
+    if (fileHandle.appendPage(page) != 0) {
         return -1;
     }
 
@@ -280,7 +279,7 @@ RC RecordBasedFileManager::createRecordPage(FileHandle &fileHandle, void *data, 
     //free
     free(page);
 
-    // cout << "Page number is " << pageNum << " Page offset is " << pageOffset << " Slot number is " << rid.slotNum << endl;
+    // cout << "Page number is " << pageNum << " Page offset is " << m.pageOffset << " Slot number is " << rid.slotNum << endl;
     // cout << endl;
 
     return 0;
@@ -296,58 +295,67 @@ void RecordBasedFileManager::memRead(void *dest, const char *&src, size_t len) c
     src += len;
 }
 
-bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void* data, RID &rid) {
+bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid) {
     //read page into buffer
     void *page = malloc(PAGE_SIZE);
     fileHandle.readPage(pageNum, page);
-    char* pageBuff = static_cast<char*>(page);
-    char* miniDirectory = &pageBuff[PAGE_SIZE - sizeof(page_offset_t) - sizeof(slot_count_t)];
+    char *pageBuff = static_cast<char *>(page);
+    const char *miniDirectory = &pageBuff[PAGE_SIZE - sizeof(MiniDirectory)];
 
     //calculate free space
-    slot_count_t slotCount;
-    memcpy(&slotCount, miniDirectory, sizeof(slot_count_t));
-    miniDirectory += sizeof(slot_count_t);
+    MiniDirectory m{};
+    memRead(&m, miniDirectory, sizeof(MiniDirectory));
 
-    page_offset_t pageOffset;
-    memcpy(&pageOffset, miniDirectory, sizeof(page_offset_t));
-    miniDirectory += sizeof(page_offset_t);
+    ssize_t totalSize = PAGE_SIZE - m.pageOffset - (sizeof(MiniDirectory) + (m.slotCount * sizeof(Slot)));
 
-    ssize_t totalSize = PAGE_SIZE - pageOffset - (sizeof(slot_count_t) + sizeof(page_offset_t) + (slotCount * sizeof(Slot)));
-
-    // cout << "Before free space is " << totalSize << " Page number is " << pageNum << " Page offset is " << pageOffset << " Slot count is " << slotCount << endl;
+    // cout << "Before free space is " << totalSize << " Page number is " << pageNum << " Page offset is " << m.pageOffset << " Slot count is " << m.slotCount << endl;
     // cout << endl;
 
     //if there is enough space write record and write page
-    if(totalSize >= len + sizeof(Slot)) {
+    if (totalSize >= len + sizeof(Slot)) {
         //create slot and mini directory info
-        page_offset_t pageOffset_ = pageOffset + len;
-        slot_count_t slotCount_ = slotCount + 1;
+        slot_count_t slotCount_new = m.slotCount + 1;
+        slot_offset_t slotOffset_new = m.slotOffset - sizeof(Slot);
+        Slot emptySlot{};
+
+        //check if there is a free slot
+        if (m.slotOffset != (PAGE_SIZE - (sizeof(MiniDirectory) + (m.slotCount * sizeof(Slot)) + sizeof(Slot)))) {
+            slotCount_new = m.slotCount;  //slotCount is unchanged
+
+            //adjust pointers
+            miniDirectory = &pageBuff[m.slotOffset];
+            memRead(&emptySlot, miniDirectory, sizeof(Slot));
+            slotOffset_new = emptySlot.offset;
+        }
+
+        MiniDirectory m_new{
+            slotOffset_new,
+            slotCount_new,
+            static_cast<page_offset_t>(m.pageOffset + len)};
+
         Slot s = {
-            (unsigned) pageOffset,
-            (unsigned) len,
-            0
-        };
+            m.pageOffset,
+            (unsigned)len};
 
         //write record into page
-        char* newRecord = &pageBuff[pageOffset];
+        char *newRecord = &pageBuff[m.pageOffset];
         memcpy(newRecord, data, len);
 
         //update minidirectory
-        unsigned offset = PAGE_SIZE - sizeof(page_offset_t) - sizeof(slot_count_t) - (slotCount * sizeof(Slot)) - sizeof(Slot);
-        miniDirectory = &pageBuff[offset];
-        memWrite(miniDirectory, &s, sizeof(Slot));
-        miniDirectory = &pageBuff[PAGE_SIZE - sizeof(page_offset_t) - sizeof(slot_count_t)];
-        memWrite(miniDirectory, &slotCount_, sizeof(slot_count_t));
-        memWrite(miniDirectory, &pageOffset_, sizeof(page_offset_t));
+        newRecord = &pageBuff[m.slotOffset];
+        memcpy(newRecord, &s, sizeof(Slot));
+
+        newRecord = &pageBuff[PAGE_SIZE - sizeof(MiniDirectory)];
+        memWrite(newRecord, &m_new, sizeof(MiniDirectory));
 
         //write page
-        if(fileHandle.writePage(pageNum, page) != 0) {
+        if (fileHandle.writePage(pageNum, page) != 0) {
             return -1;
         }
 
         //update rid
         rid.pageNum = pageNum;
-        rid.slotNum = slotCount_ - 1;
+        rid.slotNum = (((PAGE_SIZE - m.slotOffset) - sizeof(MiniDirectory)) / sizeof(Slot)) - 1;
 
         //free
         free(page);
@@ -357,7 +365,28 @@ bool RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNu
 
     //free
     free(page);
-    
+
     //there was not enough space
     return false;
+}
+
+RC RecordBasedFileManager::deleteRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid) {
+    //read and parse RID
+
+    /*
+        case 1: RID not redirected
+        1) create a buffer storing end of deleted record to start of free space
+        2) save offset of the start of deleted record, memcpy the buffer to the start offset
+        3) create new slot (-1, offset that freeSlot offset already points to) and overwrite slot of the deleted record
+        4) change the pageOffset, have freeSlot offset point to the start of the newly deleted slot
+    */
+
+    /*
+        case 2: RID redirected
+        1) go to the page and parse slot of the record
+        2) perform same steps as if RID not redirected
+        3) once you return, reset slot that held redirect information and have it point to another freeSlot
+    */
+
+    return -1;
 }
