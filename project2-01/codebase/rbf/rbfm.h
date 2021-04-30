@@ -152,12 +152,15 @@ class RecordBasedFileManager {
    private:
     static RecordBasedFileManager *_rbf_manager;
 
-    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                                         //Parse slot data into struct
-    void memWrite(char *&dest, const void *src, size_t len) const;                                     //memcpy data and increment dest
-    void memRead(void *dest, const char *&src, size_t len) const;                                      //memcpy data and increment src
-    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);                         //write the record into a free page
-    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);  //appends page and adds a mini directory
-    bool isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);     //check if a page is free, if so write record to the page
+    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                                                  //Parse slot data into struct
+    void memWrite(char *&dest, const void *src, size_t len) const;                                              //memcpy data and increment dest
+    void memRead(void *dest, const char *&src, size_t len) const;                                               //memcpy data and increment src
+    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);                                  //write the record into a free page
+    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);           //appends page and adds a mini directory
+    bool isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);              //check if a page is free, if so write record to the page
+    ssize_t createRecord(const vector<Attribute> &recordDescriptor, const void *data, void *record);  //create record and calculate record size
+    RC updateRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, 
+        const void *data, const RID &originalRid, const RID &redirectedRID, int flag);
 };
 
 #endif
