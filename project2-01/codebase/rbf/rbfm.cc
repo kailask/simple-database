@@ -585,3 +585,36 @@ RC RecordBasedFileManager::updateRecordHelper(FileHandle &fileHandle, const vect
 
     return 0;
 }
+
+RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data) {
+    //read record into buffer
+    char record[PAGE_SIZE];
+    char* recordBuff = static_cast<char*>(record);
+    char* dest = static_cast<char*>(data);
+    if(readRecord(fileHandle, recordDescriptor, rid, record) != 0) return -1;
+
+    //find index corresponding to the attribute name
+    ssize_t numFields = recordDescriptor.size();
+    size_t nullLength = ceil(static_cast<float>(numFields) / CHAR_BIT);
+    field_offset_t fieldStart = nullLength + (numFields * sizeof(Slot));
+    field_offset_t fieldEnd;
+    for(ssize_t index = 0; index < numFields; index++) {
+        memcpy(&fieldEnd, &recordBuff[nullLength + (sizeof(field_offset_t) * index)], sizeof(field_offset_t));
+        if(recordDescriptor[index].name == attributeName) {
+            //write null bit to data
+            uint8_t bitMap = (record[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80);
+            memWrite(dest, &bitMap, sizeof(uint8_t));
+
+            //check if the bit is set or not
+            if (bitMap) return 0;
+
+            //write attribute to dest
+            memWrite(dest, &recordBuff[fieldStart], fieldEnd - fieldStart);
+
+            return 0;
+        }
+        fieldStart = fieldEnd;
+    }
+    
+    return -1;
+}
