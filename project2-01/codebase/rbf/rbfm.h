@@ -78,7 +78,13 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 
 class RBFM_ScanIterator {
    public:
-    RBFM_ScanIterator(){};
+    RBFM_ScanIterator();
+    RBFM_ScanIterator(FileHandle &fileHandle,
+            const vector<Attribute> &recordDescriptor,
+            const string &conditionAttribute,
+            const CompOp compOp,                   // comparision type such as "<" and "="
+            const void *value,                     // used in the comparison
+            const vector<string> &attributeNames);  // a list of projected attributes
     ~RBFM_ScanIterator(){};
 
     // Never keep the results in the memory. When getNextRecord() is called,
@@ -86,6 +92,14 @@ class RBFM_ScanIterator {
     // "data" follows the same format as RecordBasedFileManager::insertRecord().
     RC getNextRecord(RID &rid, void *data) { return RBFM_EOF; };
     RC close() { return -1; };
+
+   private:
+    FileHandle fileHandle;
+    vector<Attribute> recordDescriptor;
+    string conditionAttribute;
+    CompOp compOp;                   // comparision type such as "<" and "="
+    const void *value;                     // used in the comparison
+    vector<string> attributeNames;  // a list of projected attributes
 };
 
 class RecordBasedFileManager {
@@ -152,15 +166,15 @@ class RecordBasedFileManager {
    private:
     static RecordBasedFileManager *_rbf_manager;
 
-    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                                                  //Parse slot data into struct
-    void memWrite(char *&dest, const void *src, size_t len) const;                                              //memcpy data and increment dest
-    void memRead(void *dest, const char *&src, size_t len) const;                                               //memcpy data and increment src
-    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);                                  //write the record into a free page
-    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);           //appends page and adds a mini directory
-    RC isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);              //check if a page is free, if so write record to the page
-    ssize_t createRecord(const vector<Attribute> &recordDescriptor, const void *data, void *record);  //create record and calculate record size
-    RC updateRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, 
-        void* record, RID &originalRid, RID &currentRid, int flag, ssize_t recordSize);
+    RC parseSlot(char *page, unsigned slotNum, Slot &s) const;                                         //Parse slot data into struct
+    void memWrite(char *&dest, const void *src, size_t len) const;                                     //memcpy data and increment dest
+    void memRead(void *dest, const char *&src, size_t len) const;                                      //memcpy data and increment src
+    RC writeRecord(FileHandle &fileHandle, void *data, RID &rid, ssize_t len);                         //write the record into a free page
+    RC createRecordPage(FileHandle &fileHandle, void *data, RID &rid, ssize_t len, unsigned pageNum);  //appends page and adds a mini directory
+    RC isValidPage(FileHandle &fileHandle, unsigned pageNum, ssize_t len, void *data, RID &rid);       //check if a page is free, if so write record to the page
+    ssize_t createRecord(const vector<Attribute> &recordDescriptor, const void *data, void *record);   //create record and calculate record size
+    RC updateRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor,
+                          void *record, RID &originalRid, RID &currentRid, int flag, ssize_t recordSize);
 };
 
 #endif

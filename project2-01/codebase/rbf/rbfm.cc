@@ -5,6 +5,20 @@
 
 #include <bitset>
 
+RBFM_ScanIterator::RBFM_ScanIterator(FileHandle &fileHandle,
+            const vector<Attribute> &recordDescriptor,
+            const string &conditionAttribute,
+            const CompOp compOp,                   // comparision type such as "<" and "="
+            const void *value,                     // used in the comparison
+            const vector<string> &attributeNames) {  // a list of projected attributes
+                this->fileHandle = fileHandle;
+                this->recordDescriptor = recordDescriptor;
+                this->conditionAttribute = conditionAttribute;
+                this->compOp = compOp;
+                this->value = value;
+                this->attributeNames = attributeNames;
+            }
+
 RecordBasedFileManager *RecordBasedFileManager::_rbf_manager = 0;
 
 RecordBasedFileManager *RecordBasedFileManager::instance() {
@@ -15,7 +29,6 @@ RecordBasedFileManager *RecordBasedFileManager::instance() {
 }
 
 RecordBasedFileManager::RecordBasedFileManager() {
-    //initialize map of type to length
 }
 
 RecordBasedFileManager::~RecordBasedFileManager() {
@@ -599,14 +612,13 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
     field_offset_t fieldStart = nullLength + (numFields * sizeof(Slot));
     field_offset_t fieldEnd;
     for(ssize_t index = 0; index < numFields; index++) {
+        //get the field offset
         memcpy(&fieldEnd, &recordBuff[nullLength + (sizeof(field_offset_t) * index)], sizeof(field_offset_t));
+
         if(recordDescriptor[index].name == attributeName) {
             //write null bit to data
             uint8_t bitMap = (record[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80);
             memWrite(dest, &bitMap, sizeof(uint8_t));
-
-            //check if the bit is set or not
-            if (bitMap) return 0;
 
             //write attribute to dest
             memWrite(dest, &recordBuff[fieldStart], fieldEnd - fieldStart);
