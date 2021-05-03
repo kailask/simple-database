@@ -6,18 +6,40 @@
 #include <bitset>
 
 RBFM_ScanIterator::RBFM_ScanIterator(FileHandle &fileHandle,
-            const vector<Attribute> &recordDescriptor,
-            const string &conditionAttribute,
-            const CompOp compOp,                   // comparision type such as "<" and "="
-            const void *value,                     // used in the comparison
-            const vector<string> &attributeNames) {  // a list of projected attributes
-                this->fileHandle = fileHandle;
-                this->recordDescriptor = recordDescriptor;
-                this->conditionAttribute = conditionAttribute;
-                this->compOp = compOp;
-                this->value = value;
-                this->attributeNames = attributeNames;
-            }
+                                     const vector<Attribute> &recordDescriptor,
+                                     const string &conditionAttribute,
+                                     const CompOp compOp,                     // comparision type such as "<" and "="
+                                     const void *value,                       // used in the comparison
+                                     const vector<string> &attributeNames) {  // a list of projected attributes
+    this->fileHandle = fileHandle;
+    this->recordDescriptor = recordDescriptor;
+    this->conditionAttribute = conditionAttribute;
+    this->compOp = compOp;
+    this->value = value;
+    this->attributeNames = attributeNames;
+}
+
+RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
+    //read page containing the rid
+    char *dest = static_cast<char *>(data);
+    char page[PAGE_SIZE];
+    if (fileHandle.readPage(rid.pageNum, page) != 0) return -1;
+
+    //start checking from the rid
+    unsigned index = rid.slotNum;
+    MiniDirectory m{};
+    memcpy(&m, &page[PAGE_SIZE - sizeof(MiniDirectory)], sizeof(MiniDirectory));
+
+    // while (index < m.slotCount) {
+    //     RecordBasedFileManager::instance()->readAttribute(fileHandle, recordDescriptor, {rid.pageNum, index}, conditionAttribute, )
+    // }
+
+    //if it wasn't found in that page, iterate through the other pages until match is found
+
+    //once found make sure to update data and update rid to be the next unread record
+
+    return -1;
+}
 
 RecordBasedFileManager *RecordBasedFileManager::_rbf_manager = 0;
 
@@ -260,15 +282,26 @@ RC RecordBasedFileManager::isValidPage(FileHandle &fileHandle, unsigned pageNum,
 }
 
 RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data) {
+    return readRecordHelper(fileHandle, recordDescriptor, rid, data, 0, nullptr);
+}
+
+RC RecordBasedFileManager::readRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data, int flag, char *page_) {
     char *dest = static_cast<char *>(data);
     char page[PAGE_SIZE];
-    RC ret = fileHandle.readPage(rid.pageNum, page);
+    RC ret;
+
+    if(flag) {
+        strcpy(page, page_);
+    } else {
+        ret = fileHandle.readPage(rid.pageNum, page);
+    }
+
     if (ret != 0) return -1;  //Page number is invalid
 
     Slot s{};
     ret = parseSlot(page, rid.slotNum, s);
     if (ret != 0) return -1;                                                                                         //Slot number is invalid
-    if (s.offset < 0) return readRecord(fileHandle, recordDescriptor, {(unsigned)(s.offset * -1), s.length}, data);  //Slot was moved
+    if (s.offset < 0) return readRecordHelper(fileHandle, recordDescriptor, {(unsigned)(s.offset * -1), s.length}, data, 0, page_);  //Slot was moved
     if (s.length == 0) return -1;                                                                                    //Slot was deleted
 
     char *record = &page[s.offset];
@@ -591,7 +624,7 @@ RC RecordBasedFileManager::updateRecordHelper(FileHandle &fileHandle, const vect
         if (writeRecord(fileHandle, record, temp, recordSize)) return -1;
 
         //delete record from page
-        if(deleteRecord(fileHandle, recordDescriptor, {currentRid.pageNum, currentRid.slotNum}) != 0) return -1;
+        if (deleteRecord(fileHandle, recordDescriptor, {currentRid.pageNum, currentRid.slotNum}) != 0) return -1;
 
         currentRid = temp;
     }
@@ -600,22 +633,31 @@ RC RecordBasedFileManager::updateRecordHelper(FileHandle &fileHandle, const vect
 }
 
 RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data) {
+    return readAttributeHelper(fileHandle, recordDescriptor, rid, attributeName, data, 0, nullptr);
+}
+
+RC RecordBasedFileManager::readAttributeHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data, int flag, char *record_) {
     //read record into buffer
     char record[PAGE_SIZE];
-    char* recordBuff = static_cast<char*>(record);
-    char* dest = static_cast<char*>(data);
-    if(readRecord(fileHandle, recordDescriptor, rid, record) != 0) return -1;
+    char *recordBuff = static_cast<char *>(record);
+    char *dest = static_cast<char *>(data);
+
+    if(flag) {
+        strcpy(record, record_);
+    } else {
+        if (readRecord(fileHandle, recordDescriptor, rid, record) != 0) return -1;
+    }
 
     //find index corresponding to the attribute name
     ssize_t numFields = recordDescriptor.size();
     size_t nullLength = ceil(static_cast<float>(numFields) / CHAR_BIT);
     field_offset_t fieldStart = nullLength + (numFields * sizeof(Slot));
     field_offset_t fieldEnd;
-    for(ssize_t index = 0; index < numFields; index++) {
+    for (ssize_t index = 0; index < numFields; index++) {
         //get the field offset
         memcpy(&fieldEnd, &recordBuff[nullLength + (sizeof(field_offset_t) * index)], sizeof(field_offset_t));
 
-        if(recordDescriptor[index].name == attributeName) {
+        if (recordDescriptor[index].name == attributeName) {
             //write null bit to data
             uint8_t bitMap = (record[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80);
             memWrite(dest, &bitMap, sizeof(uint8_t));
@@ -627,6 +669,19 @@ RC RecordBasedFileManager::readAttribute(FileHandle &fileHandle, const vector<At
         }
         fieldStart = fieldEnd;
     }
-    
+
     return -1;
+
+}
+
+RC RecordBasedFileManager::scan(FileHandle &fileHandle,
+                                const vector<Attribute> &recordDescriptor,
+                                const string &conditionAttribute,
+                                const CompOp compOp,
+                                const void *value,
+                                const vector<string> &attributeNames,
+                                RBFM_ScanIterator &rbfm_ScanIterator) {
+    rbfm_ScanIterator = RBFM_ScanIterator(fileHandle, recordDescriptor, conditionAttribute,
+                                          compOp, value, attributeNames);
+    return 0;
 }

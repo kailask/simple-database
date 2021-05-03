@@ -80,26 +80,27 @@ class RBFM_ScanIterator {
    public:
     RBFM_ScanIterator();
     RBFM_ScanIterator(FileHandle &fileHandle,
-            const vector<Attribute> &recordDescriptor,
-            const string &conditionAttribute,
-            const CompOp compOp,                   // comparision type such as "<" and "="
-            const void *value,                     // used in the comparison
-            const vector<string> &attributeNames);  // a list of projected attributes
+                      const vector<Attribute> &recordDescriptor,
+                      const string &conditionAttribute,
+                      const CompOp compOp,                    // comparision type such as "<" and "="
+                      const void *value,                      // used in the comparison
+                      const vector<string> &attributeNames);  // a list of projected attributes
     ~RBFM_ScanIterator(){};
 
     // Never keep the results in the memory. When getNextRecord() is called,
     // a satisfying record needs to be fetched from the file.
     // "data" follows the same format as RecordBasedFileManager::insertRecord().
-    RC getNextRecord(RID &rid, void *data) { return RBFM_EOF; };
+    RC getNextRecord(RID &rid, void *data);
     RC close() { return -1; };
 
    private:
     FileHandle fileHandle;
     vector<Attribute> recordDescriptor;
     string conditionAttribute;
-    CompOp compOp;                   // comparision type such as "<" and "="
-    const void *value;                     // used in the comparison
+    CompOp compOp;                  // comparision type such as "<" and "="
+    const void *value;              // used in the comparison
     vector<string> attributeNames;  // a list of projected attributes
+    RID temp{0,0};
 };
 
 class RecordBasedFileManager {
@@ -175,6 +176,8 @@ class RecordBasedFileManager {
     ssize_t createRecord(const vector<Attribute> &recordDescriptor, const void *data, void *record);   //create record and calculate record size
     RC updateRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor,
                           void *record, RID &originalRid, RID &currentRid, int flag, ssize_t recordSize);
+    RC readRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data, int flag, char *page_);
+    RC readAttributeHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data, int flag, char *record_);
 };
 
 #endif
