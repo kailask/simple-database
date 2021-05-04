@@ -26,7 +26,6 @@ RC RelationManager::createCatalog() {
 }
 
 RC RelationManager::deleteCatalog() {
-    if (_cat == NULL) return ERROR;
     rbfm->destroyFile(meta_table_name);
     rbfm->destroyFile(columns_table_name);
     delete _cat;
@@ -90,7 +89,6 @@ RC RelationManager::scan(const string &tableName,
                          const vector<string> &attributeNames,
                          RM_ScanIterator &rm_ScanIterator) {
     Table *t = _cat->getTable(tableName);
-    rm_ScanIterator.my_iter = RBFM_ScanIterator();
     return rbfm->scan(t->file, t->attrs, conditionAttribute, compOp, value, attributeNames, rm_ScanIterator.my_iter);
 }
 
@@ -164,7 +162,7 @@ RC RelationManager::Catalog::removeTable(const string &tableName) {
         tables.find(tableName) == tables.end()) return ERROR;
     vector<RID> &rids = tables.at(tableName).rids;
     rbfm->deleteRecord(meta_file, tables.at(meta_table_name).attrs, rids[0]);
-    for (auto i = 1; i < rids.size(); i++) {
+    for (size_t i = 1; i < rids.size(); i++) {
         rbfm->deleteRecord(columns_file, tables.at(columns_table_name).attrs, rids[i]);
     }
 
@@ -191,7 +189,7 @@ vector<RID> RelationManager::Catalog::writeTable(FileHandle &meta_file, FileHand
     rbfm->insertRecord(meta_file, meta_table_attrs, data, rid);
     rids.push_back(rid);
 
-    for (size_t i = 0; i < attrs.size(); i++) {
+    for (unsigned i = 0; i < attrs.size(); i++) {
         Attribute attr = attrs[i];
         prepareTuple(data, columns_table_attrs, {(void *)&table_id, (void *)attr.name.c_str(), (void *)&attr.type, &i, (void *)table_name.c_str()});
         rbfm->insertRecord(columns_file, columns_table_attrs, data, rid);
@@ -228,11 +226,11 @@ void RelationManager::prepareTuple(char *data, const vector<Attribute> &attrs, v
                 data += 4;
                 break;
             case TypeVarChar:
-                int len = strlen((char *)values[i]);
+                unsigned len = strlen((char *)values[i]);
                 memcpy(data, &len, 4);
                 data += 4;
                 memcpy(data, values[i], len);
-                data += attrs[i].length;
+                data += len;
         }
     }
 }

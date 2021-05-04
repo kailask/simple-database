@@ -78,7 +78,7 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 
 class RBFM_ScanIterator {
    public:
-    RBFM_ScanIterator();
+    RBFM_ScanIterator(){};
     RBFM_ScanIterator(FileHandle &fileHandle,
                       const vector<Attribute> &recordDescriptor,
                       const string &conditionAttribute,
@@ -94,7 +94,7 @@ class RBFM_ScanIterator {
     void getAttrInfo();
     bool matchOperator(char *record, const char *attribute);
     RC scanPage(RID &rid, char *page, char *dest);
-    void prepareTuple(char* dest, char* record);
+    void prepareTuple(char *dest, char *record);
     RC close() { return -1; };
 
    private:
@@ -104,7 +104,7 @@ class RBFM_ScanIterator {
     CompOp compOp;                  // comparision type such as "<" and "="
     const void *value;              // used in the comparison
     vector<string> attributeNames;  // a list of projected attributes
-    RID tracker{0,0};
+    RID tracker{0, 0};
     AttrLength attrLength;
     AttrType attrType;
 };
