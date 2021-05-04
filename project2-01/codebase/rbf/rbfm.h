@@ -92,8 +92,9 @@ class RBFM_ScanIterator {
     // "data" follows the same format as RecordBasedFileManager::insertRecord().
     RC getNextRecord(RID &rid, void *data);
     void getAttrInfo();
-    RC matchOperator(void *data, char *record, char *attribute);
+    bool matchOperator(char *record, const char *attribute);
     RC scanPage(RID &rid, char *page, char *dest);
+    void prepareTuple(char* dest, char* record);
     RC close() { return -1; };
 
    private:
@@ -164,10 +165,6 @@ class RecordBasedFileManager {
             const vector<string> &attributeNames,  // a list of projected attributes
             RBFM_ScanIterator &rbfm_ScanIterator);
 
-    RC readAttributeHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data, int flag, char *record_);
-
-    RC readRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data, int flag, char *page_);
-
    public:
    protected:
     RecordBasedFileManager();
@@ -185,6 +182,10 @@ class RecordBasedFileManager {
     ssize_t createRecord(const vector<Attribute> &recordDescriptor, const void *data, void *record);   //create record and calculate record size
     RC updateRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor,
                           void *record, RID &originalRid, RID &currentRid, int flag, ssize_t recordSize);
+    RC readAttributeHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data, int flag, char *record_);
+
+    RC readRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data, int flag, char *page_);
+    friend class RBFM_ScanIterator;
 };
 
 #endif

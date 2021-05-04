@@ -28,27 +28,105 @@ void RBFM_ScanIterator::getAttrInfo() {
     }
 }
 
-RC RBFM_ScanIterator::matchOperator(void *data, char *record, char *attribute) {
-    //now that we have the record and attribute we need to check to see which operation matches as well as whether a record fits that operation
+void RBFM_ScanIterator::prepareTuple(char* dest, char* record) {
+
+}
+
+bool RBFM_ScanIterator::matchOperator(char *record, const char *attribute) {
+    //if the null bit is set return -1
+    uint8_t bitMap;
+    RecordBasedFileManager::instance()->memRead(&bitMap, attribute, sizeof(uint8_t));
+    if(conditionAttribute != "" && bitMap & 0x80) {
+        return false;
+    }
+
+    //otherwise go to the write operator and compare
     switch(compOp) {
         case CompOp::EQ_OP:
-            break;
+            switch(attrType) {
+                case AttrType::TypeInt:
+                    int i;
+                    memcpy(&i, attribute, sizeof(int));
+                    return i == *((int*)value);
+                case AttrType::TypeReal:
+                    float f;
+                    memcpy(&f, attribute, sizeof(float));
+                    return f == *((double*)value);
+                case AttrType::TypeVarChar:
+                    return (strcmp(attribute, (const char*)value) == 0) ? true : false;
+            }
         case CompOp::GE_OP:
-            break;
+            switch(attrType) {
+                case AttrType::TypeInt:
+                    int i;
+                    memcpy(&i, attribute, sizeof(int));
+                    return i >= *((int*)value);
+                case AttrType::TypeReal:
+                    float f;
+                    memcpy(&f, attribute, sizeof(float));
+                    return f >= *((double*)value);
+                case AttrType::TypeVarChar:
+                    return (strcmp(attribute, (const char*)value) >= 0) ? true : false;
+            }
         case CompOp::GT_OP:
-            break;
+            switch(attrType) {
+                case AttrType::TypeInt:
+                    int i;
+                    memcpy(&i, attribute, sizeof(int));
+                    return i > *((int*)value);
+                case AttrType::TypeReal:
+                    float f;
+                    memcpy(&f, attribute, sizeof(float));
+                    return f > *((double*)value);
+                case AttrType::TypeVarChar:
+                    return (strcmp(attribute, (const char*)value) > 0) ? true : false;
+            }
         case CompOp::LE_OP:
-            break;
+            switch(attrType) {
+                case AttrType::TypeInt:
+                    int i;
+                    memcpy(&i, attribute, sizeof(int));
+                    return i <= *((int*)value);
+                case AttrType::TypeReal:
+                    float f;
+                    memcpy(&f, attribute, sizeof(float));
+                    return f <= *((double*)value);
+                case AttrType::TypeVarChar:
+                    return (strcmp(attribute, (const char*)value) <= 0) ? true : false;
+            }
         case CompOp::LT_OP:
-            break;
+            switch(attrType) {
+                case AttrType::TypeInt:
+                    int i;
+                    memcpy(&i, attribute, sizeof(int));
+                    return i < *((int*)value);
+                case AttrType::TypeReal:
+                    float f;
+                    memcpy(&f, attribute, sizeof(float));
+                    return f < *((double*)value);
+                case AttrType::TypeVarChar:
+                    return (strcmp(attribute, (const char*)value) < 0) ? true : false;
+            }
         case CompOp::NE_OP:
-            break;
+            switch(attrType) {
+                case AttrType::TypeInt:
+                    int i;
+                    memcpy(&i, attribute, sizeof(int));
+                    return i != *((int*)value);
+                case AttrType::TypeReal:
+                    float f;
+                    memcpy(&f, attribute, sizeof(float));
+                    return f != *((double*)value);
+                case AttrType::TypeVarChar:
+                    return (strcmp(attribute, (const char*)value) != 0) ? true : false;
+            }
         case CompOp::NO_OP:
-            break;
+            return true;
         default:
-            return -1;
+            return false;
     }
-    return 0;
+
+    return false;
 }
 
 RC RBFM_ScanIterator::scanPage(RID &rid, char *page, char *dest) {
@@ -71,14 +149,15 @@ RC RBFM_ScanIterator::scanPage(RID &rid, char *page, char *dest) {
         char record[PAGE_SIZE];
         if(RecordBasedFileManager::instance()->readRecordHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, record, 1, page) != 0) return -1;
 
-        //read the attribute if name not NULL
+        //read the attribute if name not empty
         char attribute[attrLength + 1];
-        if(value != NULL) {
+        if(conditionAttribute != "") {
             if(RecordBasedFileManager::instance()->readAttributeHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, conditionAttribute, attribute, 1, record) != 0) return -1;
         }
 
         //switch statement to check what kind of condition is used
-        if(matchOperator(dest, record, attribute) == 0) {
+        if(matchOperator(record, attribute)) {
+            prepareTuple(dest, record);
             rid.pageNum = tracker.pageNum;
             rid.slotNum = tracker.slotNum;
             tracker.slotNum++;
@@ -115,7 +194,7 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
     }
 
     //you've reached the end
-    return -1;
+    return RBFM_EOF;
 }
 
 RecordBasedFileManager *RecordBasedFileManager::_rbf_manager = 0;
