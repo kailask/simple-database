@@ -20,105 +20,135 @@ RBFM_ScanIterator::RBFM_ScanIterator(FileHandle &fileHandle,
 }
 
 void RBFM_ScanIterator::getAttrInfo() {
-    for(ssize_t index = 0; index < recordDescriptor.size(); index++) {
-        if(recordDescriptor[index].name == conditionAttribute) {
+    for (ssize_t index = 0; index < recordDescriptor.size(); index++) {
+        if (recordDescriptor[index].name == conditionAttribute) {
             attrLength = recordDescriptor[index].length;
             attrType = recordDescriptor[index].type;
         }
     }
 }
 
-void RBFM_ScanIterator::prepareTuple(char* dest, char* record) {
+void RBFM_ScanIterator::prepareTuple(char *dest, char *record) {
+    //create null bit map and insert values into dest
+    ssize_t numFieldsRecord = recordDescriptor.size();
+    size_t nullLengthRecord = ceil(static_cast<float>(numFieldsRecord) / CHAR_BIT);
+    ssize_t numFieldsDest = attributeNames.size();
+    ssize_t nullLengthDest = ceil(static_cast<float>(numFieldsDest) / CHAR_BIT);
 
+    ssize_t attrIndex = 0;
+    field_offset_t fieldStart = nullLengthRecord + (numFieldsRecord * sizeof(field_offset_t));
+    field_offset_t fieldEnd;
+    char *destBuff = &dest[nullLengthDest];
+
+    //iterate thru record and populate dest
+    for (size_t index = 0; index < numFieldsRecord; index++) {
+        //get the field offset
+        memcpy(&fieldEnd, &record[nullLengthRecord + (sizeof(field_offset_t) * index)], sizeof(field_offset_t));
+        if (recordDescriptor[index].name == attributeNames[attrIndex]) {
+            if (record[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80) {
+                dest[attrIndex / CHAR_BIT] = (dest[attrIndex / CHAR_BIT] << (attrIndex % CHAR_BIT)) | 0x80;
+                continue;
+            }
+
+            if (recordDescriptor[index].type == AttrType::TypeVarChar) {
+                unsigned size = fieldEnd - fieldStart;
+                RecordBasedFileManager::instance()->memWrite(destBuff, &size, sizeof(unsigned));
+            }
+            RecordBasedFileManager::instance()->memWrite(destBuff, &record[fieldStart], fieldEnd - fieldStart);
+
+            attrIndex++;
+        }
+        fieldStart = fieldEnd;
+    }
 }
 
 bool RBFM_ScanIterator::matchOperator(char *record, const char *attribute) {
     //if the null bit is set return -1
     uint8_t bitMap;
     RecordBasedFileManager::instance()->memRead(&bitMap, attribute, sizeof(uint8_t));
-    if(conditionAttribute != "" && bitMap & 0x80) {
+    if (conditionAttribute != "" && bitMap & 0x80) {
         return false;
     }
 
     //otherwise go to the write operator and compare
-    switch(compOp) {
+    switch (compOp) {
         case CompOp::EQ_OP:
-            switch(attrType) {
+            switch (attrType) {
                 case AttrType::TypeInt:
                     int i;
                     memcpy(&i, attribute, sizeof(int));
-                    return i == *((int*)value);
+                    return i == *((int *)value);
                 case AttrType::TypeReal:
                     float f;
                     memcpy(&f, attribute, sizeof(float));
-                    return f == *((double*)value);
+                    return f == *((double *)value);
                 case AttrType::TypeVarChar:
-                    return (strcmp(attribute, (const char*)value) == 0) ? true : false;
+                    return (strcmp(attribute, (const char *)value) == 0) ? true : false;
             }
         case CompOp::GE_OP:
-            switch(attrType) {
+            switch (attrType) {
                 case AttrType::TypeInt:
                     int i;
                     memcpy(&i, attribute, sizeof(int));
-                    return i >= *((int*)value);
+                    return i >= *((int *)value);
                 case AttrType::TypeReal:
                     float f;
                     memcpy(&f, attribute, sizeof(float));
-                    return f >= *((double*)value);
+                    return f >= *((double *)value);
                 case AttrType::TypeVarChar:
-                    return (strcmp(attribute, (const char*)value) >= 0) ? true : false;
+                    return (strcmp(attribute, (const char *)value) >= 0) ? true : false;
             }
         case CompOp::GT_OP:
-            switch(attrType) {
+            switch (attrType) {
                 case AttrType::TypeInt:
                     int i;
                     memcpy(&i, attribute, sizeof(int));
-                    return i > *((int*)value);
+                    return i > *((int *)value);
                 case AttrType::TypeReal:
                     float f;
                     memcpy(&f, attribute, sizeof(float));
-                    return f > *((double*)value);
+                    return f > *((double *)value);
                 case AttrType::TypeVarChar:
-                    return (strcmp(attribute, (const char*)value) > 0) ? true : false;
+                    return (strcmp(attribute, (const char *)value) > 0) ? true : false;
             }
         case CompOp::LE_OP:
-            switch(attrType) {
+            switch (attrType) {
                 case AttrType::TypeInt:
                     int i;
                     memcpy(&i, attribute, sizeof(int));
-                    return i <= *((int*)value);
+                    return i <= *((int *)value);
                 case AttrType::TypeReal:
                     float f;
                     memcpy(&f, attribute, sizeof(float));
-                    return f <= *((double*)value);
+                    return f <= *((double *)value);
                 case AttrType::TypeVarChar:
-                    return (strcmp(attribute, (const char*)value) <= 0) ? true : false;
+                    return (strcmp(attribute, (const char *)value) <= 0) ? true : false;
             }
         case CompOp::LT_OP:
-            switch(attrType) {
+            switch (attrType) {
                 case AttrType::TypeInt:
                     int i;
                     memcpy(&i, attribute, sizeof(int));
-                    return i < *((int*)value);
+                    return i < *((int *)value);
                 case AttrType::TypeReal:
                     float f;
                     memcpy(&f, attribute, sizeof(float));
-                    return f < *((double*)value);
+                    return f < *((double *)value);
                 case AttrType::TypeVarChar:
-                    return (strcmp(attribute, (const char*)value) < 0) ? true : false;
+                    return (strcmp(attribute, (const char *)value) < 0) ? true : false;
             }
         case CompOp::NE_OP:
-            switch(attrType) {
+            switch (attrType) {
                 case AttrType::TypeInt:
                     int i;
                     memcpy(&i, attribute, sizeof(int));
-                    return i != *((int*)value);
+                    return i != *((int *)value);
                 case AttrType::TypeReal:
                     float f;
                     memcpy(&f, attribute, sizeof(float));
-                    return f != *((double*)value);
+                    return f != *((double *)value);
                 case AttrType::TypeVarChar:
-                    return (strcmp(attribute, (const char*)value) != 0) ? true : false;
+                    return (strcmp(attribute, (const char *)value) != 0) ? true : false;
             }
         case CompOp::NO_OP:
             return true;
@@ -140,23 +170,23 @@ RC RBFM_ScanIterator::scanPage(RID &rid, char *page, char *dest) {
         memcpy(&s, &page[PAGE_SIZE - sizeof(MiniDirectory) - ((tracker.slotNum + 1) * sizeof(Slot))], sizeof(Slot));
 
         //if the slot is empty or a redirect continue
-        if(s.offset < 0 || s.length == 0) {
+        if (s.offset < 0 || s.length == 0) {
             tracker.slotNum++;
             continue;
         }
 
         //otherwise first read record
         char record[PAGE_SIZE];
-        if(RecordBasedFileManager::instance()->readRecordHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, record, 1, page) != 0) return -1;
+        if (RecordBasedFileManager::instance()->readRecordHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, record, 1, page) != 0) return -1;
 
         //read the attribute if name not empty
         char attribute[attrLength + 1];
-        if(conditionAttribute != "") {
-            if(RecordBasedFileManager::instance()->readAttributeHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, conditionAttribute, attribute, 1, record) != 0) return -1;
+        if (conditionAttribute != "") {
+            if (RecordBasedFileManager::instance()->readAttributeHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, conditionAttribute, attribute, 1, record) != 0) return -1;
         }
 
         //switch statement to check what kind of condition is used
-        if(matchOperator(record, attribute)) {
+        if (matchOperator(record, attribute)) {
             prepareTuple(dest, record);
             rid.pageNum = tracker.pageNum;
             rid.slotNum = tracker.slotNum;
@@ -182,13 +212,13 @@ RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
 
     //iterate through all pages to find a match
     unsigned numPages = fileHandle.getNumberOfPages();
-    while(tracker.pageNum < numPages) {
+    while (tracker.pageNum < numPages) {
         //if scanned page found a match return
-        if(scanPage(rid, page, dest) == 0) {
+        if (scanPage(rid, page, dest) == 0) {
             return 0;
         }
 
-        //otherwise update the tracker rid 
+        //otherwise update the tracker rid
         tracker.pageNum++;
         tracker.slotNum = 0;
     }
@@ -446,7 +476,7 @@ RC RecordBasedFileManager::readRecordHelper(FileHandle &fileHandle, const vector
     char page[PAGE_SIZE];
     RC ret = -1;
 
-    if(flag) {
+    if (flag) {
         strcpy(page, page_);
     } else {
         ret = fileHandle.readPage(rid.pageNum, page);
@@ -456,9 +486,9 @@ RC RecordBasedFileManager::readRecordHelper(FileHandle &fileHandle, const vector
 
     Slot s{};
     ret = parseSlot(page, rid.slotNum, s);
-    if (ret != 0) return -1;                                                                                         //Slot number is invalid
+    if (ret != 0) return -1;                                                                                                         //Slot number is invalid
     if (s.offset < 0) return readRecordHelper(fileHandle, recordDescriptor, {(unsigned)(s.offset * -1), s.length}, data, 0, page_);  //Slot was moved
-    if (s.length == 0) return -1;                                                                                    //Slot was deleted
+    if (s.length == 0) return -1;                                                                                                    //Slot was deleted
 
     char *record = &page[s.offset];
     size_t numFields = recordDescriptor.size();
@@ -798,7 +828,7 @@ RC RecordBasedFileManager::readAttributeHelper(FileHandle &fileHandle, const vec
     char *recordBuff = static_cast<char *>(record);
     char *dest = static_cast<char *>(data);
 
-    if(flag) {
+    if (flag) {
         strcpy(record, record_);
     } else {
         if (readRecord(fileHandle, recordDescriptor, rid, record) != 0) return -1;
@@ -807,7 +837,7 @@ RC RecordBasedFileManager::readAttributeHelper(FileHandle &fileHandle, const vec
     //find index corresponding to the attribute name
     ssize_t numFields = recordDescriptor.size();
     size_t nullLength = ceil(static_cast<float>(numFields) / CHAR_BIT);
-    field_offset_t fieldStart = nullLength + (numFields * sizeof(Slot));
+    field_offset_t fieldStart = nullLength + (numFields * sizeof(field_offset_t));
     field_offset_t fieldEnd;
     for (ssize_t index = 0; index < numFields; index++) {
         //get the field offset
@@ -827,7 +857,6 @@ RC RecordBasedFileManager::readAttributeHelper(FileHandle &fileHandle, const vec
     }
 
     return -1;
-
 }
 
 RC RecordBasedFileManager::scan(FileHandle &fileHandle,
