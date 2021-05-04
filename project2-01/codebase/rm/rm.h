@@ -30,16 +30,16 @@ const static vector<Attribute> columns_table_attrs = {
     {"column-position", TypeInt, 4},
     {"table-name", TypeVarChar, 50}};
 
-static RecordBasedFileManager *rbfm = RecordBasedFileManager::instance();
-
 // RM_ScanIterator is an iteratr to go through tuples
 class RM_ScanIterator {
    public:
     RM_ScanIterator(){};
     ~RM_ScanIterator(){};
 
+    RBFM_ScanIterator my_iter;
+
     // "data" follows the same format as RelationManager::insertTuple()
-    RC getNextTuple(RID &rid, void *data) { return RM_EOF; };
+    RC getNextTuple(RID &rid, void *data) { return my_iter.getNextRecord(rid, data); };
     RC close() { return -1; };
 };
 
@@ -47,11 +47,12 @@ class RM_ScanIterator {
 class RelationManager {
     struct Table {
         vector<Attribute> attrs;
+        vector<RID> rids;
         FileHandle file;
 
-        Table(FileHandle f, vector<Attribute> a) : file(f), attrs(a){};
-        Table(vector<Attribute> a) : attrs(a){};
-        ~Table() { rbfm->closeFile(file); }
+        Table(RID rid_) { rids.push_back(rid_); };
+        Table(vector<Attribute> attrs_, vector<RID> rids_) : attrs(attrs_), rids(rids_){};
+        ~Table() { RecordBasedFileManager::instance()->closeFile(file); }
     };
 
     class Catalog {
@@ -60,17 +61,32 @@ class RelationManager {
 
         static Catalog *openCatalog();
         static Catalog *createCatalog();
-        static RC writeTable(FileHandle &meta_file, FileHandle &columns_file,
-                             const vector<Attribute> &attrs, unsigned table_id, const string &table_name);
-        ~Catalog();
+
+        RC insertTable(const string &tableName, const vector<Attribute> &attrs);
+        RC removeTable(const string &tableName);
+        RelationManager::Table *getTable(const string &tableName);
+
+        ~Catalog() {
+            RecordBasedFileManager *rbfm = RecordBasedFileManager::instance();
+            rbfm->closeFile(meta_file);
+            rbfm->closeFile(columns_file);
+        }
 
        private:
-        Catalog(FileHandle meta_file, FileHandle columns_file);
+        FileHandle meta_file;
+        FileHandle columns_file;
+
+        Catalog(FileHandle _meta_file, FileHandle _columns_file);
+        static vector<RID> writeTable(FileHandle &meta_file, FileHandle &columns_file,
+                                      const vector<Attribute> &attrs, unsigned table_id, const string &table_name);
         unsigned newTableId() { return ++table_id; }
         unsigned table_id = 0;
+
+        static string parseAttribute(char *data, Attribute &attr);
     };
 
    public:
+    RecordBasedFileManager *rbfm = RecordBasedFileManager::instance();
     static RelationManager *instance();
 
     RC createCatalog();
