@@ -26,5 +26,5 @@ $(CODEROOT)/rbf/librbf.a:
 
 .PHONY: clean
 clean:
-	-rm rmtest_create_tables rmtest_delete_tables rmtest *.a *.o *~ 
+	-rm rmtest_create_tables rmtest_delete_tables rmtest *.a *.o *~ tables columns tbl*
 	$(MAKE) -C $(CODEROOT)/rbf clean

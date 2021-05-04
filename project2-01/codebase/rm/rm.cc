@@ -1,4 +1,3 @@
-
 #include "rm.h"
 
 RelationManager *RelationManager::_rm = 0;

@@ -1,4 +1,3 @@
-
 #ifndef _rm_h_
 #define _rm_h_
 
@@ -17,13 +16,13 @@ using namespace std;
 #define RM_EOF (-1)  // end of a scan operator
 
 //System tables
-const static string meta_table_name = "tables";
-const static string columns_table_name = "columns";
-const static vector<Attribute> meta_table_attrs = {
+const string meta_table_name = "tables";
+const string columns_table_name = "columns";
+const vector<Attribute> meta_table_attrs = {
     {"table-id", TypeInt, 4},
     {"table-name", TypeVarChar, 50},
     {"file-name", TypeVarChar, 50}};
-const static vector<Attribute> columns_table_attrs = {
+const vector<Attribute> columns_table_attrs = {
     {"table-id", TypeInt, 4},
     {"column-name", TypeVarChar, 50},
     {"column-type", TypeInt, 4},
