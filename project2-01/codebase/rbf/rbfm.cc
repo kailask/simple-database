@@ -19,25 +19,102 @@ RBFM_ScanIterator::RBFM_ScanIterator(FileHandle &fileHandle,
     this->attributeNames = attributeNames;
 }
 
+void RBFM_ScanIterator::getAttrInfo() {
+    for(ssize_t index = 0; index < recordDescriptor.size(); index++) {
+        if(recordDescriptor[index].name == conditionAttribute) {
+            attrLength = recordDescriptor[index].length;
+            attrType = recordDescriptor[index].type;
+        }
+    }
+}
+
+RC RBFM_ScanIterator::matchOperator(void *data, char *record, char *attribute) {
+    //now that we have the record and attribute we need to check to see which operation matches as well as whether a record fits that operation
+    switch(compOp) {
+        case CompOp::EQ_OP:
+            break;
+        case CompOp::GE_OP:
+            break;
+        case CompOp::GT_OP:
+            break;
+        case CompOp::LE_OP:
+            break;
+        case CompOp::LT_OP:
+            break;
+        case CompOp::NE_OP:
+            break;
+        case CompOp::NO_OP:
+            break;
+        default:
+            return -1;
+    }
+    return 0;
+}
+
+RC RBFM_ScanIterator::scanPage(RID &rid, char *page, char *dest) {
+    // start checking from the rid
+    MiniDirectory m{};
+    memcpy(&m, &page[PAGE_SIZE - sizeof(MiniDirectory)], sizeof(MiniDirectory));
+
+    Slot s{};
+    while (tracker.slotNum < m.slotCount) {
+        //read current slot
+        memcpy(&s, &page[PAGE_SIZE - sizeof(MiniDirectory) - ((tracker.slotNum + 1) * sizeof(Slot))], sizeof(Slot));
+
+        //if the slot is empty or a redirect continue
+        if(s.offset < 0 || s.length == 0) {
+            tracker.slotNum++;
+            continue;
+        }
+
+        //otherwise first read record
+        char record[PAGE_SIZE];
+        if(RecordBasedFileManager::instance()->readRecordHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, record, 1, page) != 0) return -1;
+
+        //read the attribute if name not NULL
+        char attribute[attrLength + 1];
+        if(value != NULL) {
+            if(RecordBasedFileManager::instance()->readAttributeHelper(fileHandle, recordDescriptor, {(unsigned)s.offset, s.length}, conditionAttribute, attribute, 1, record) != 0) return -1;
+        }
+
+        //switch statement to check what kind of condition is used
+        if(matchOperator(dest, record, attribute) == 0) {
+            rid.pageNum = tracker.pageNum;
+            rid.slotNum = tracker.slotNum;
+            tracker.slotNum++;
+            return 0;
+        }
+
+        tracker.slotNum++;
+    }
+
+    //couldn't find any matches on this page
+    return -1;
+}
+
 RC RBFM_ScanIterator::getNextRecord(RID &rid, void *data) {
     //read page containing the rid
     char *dest = static_cast<char *>(data);
     char page[PAGE_SIZE];
-    if (fileHandle.readPage(rid.pageNum, page) != 0) return -1;
+    if (fileHandle.readPage(tracker.pageNum, page) != 0) return -1;
 
-    //start checking from the rid
-    unsigned index = rid.slotNum;
-    MiniDirectory m{};
-    memcpy(&m, &page[PAGE_SIZE - sizeof(MiniDirectory)], sizeof(MiniDirectory));
+    //populate the length and type of conditional variable
+    getAttrInfo();
 
-    // while (index < m.slotCount) {
-    //     RecordBasedFileManager::instance()->readAttribute(fileHandle, recordDescriptor, {rid.pageNum, index}, conditionAttribute, )
-    // }
+    //iterate through all pages to find a match
+    unsigned numPages = fileHandle.getNumberOfPages();
+    while(tracker.pageNum < numPages) {
+        //if scanned page found a match return
+        if(scanPage(rid, page, dest) == 0) {
+            return 0;
+        }
 
-    //if it wasn't found in that page, iterate through the other pages until match is found
+        //otherwise update the tracker rid 
+        tracker.pageNum++;
+        tracker.slotNum = 0;
+    }
 
-    //once found make sure to update data and update rid to be the next unread record
-
+    //you've reached the end
     return -1;
 }
 
@@ -288,7 +365,7 @@ RC RecordBasedFileManager::readRecord(FileHandle &fileHandle, const vector<Attri
 RC RecordBasedFileManager::readRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data, int flag, char *page_) {
     char *dest = static_cast<char *>(data);
     char page[PAGE_SIZE];
-    RC ret;
+    RC ret = -1;
 
     if(flag) {
         strcpy(page, page_);

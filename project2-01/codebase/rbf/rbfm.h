@@ -91,6 +91,9 @@ class RBFM_ScanIterator {
     // a satisfying record needs to be fetched from the file.
     // "data" follows the same format as RecordBasedFileManager::insertRecord().
     RC getNextRecord(RID &rid, void *data);
+    void getAttrInfo();
+    RC matchOperator(void *data, char *record, char *attribute);
+    RC scanPage(RID &rid, char *page, char *dest);
     RC close() { return -1; };
 
    private:
@@ -100,7 +103,9 @@ class RBFM_ScanIterator {
     CompOp compOp;                  // comparision type such as "<" and "="
     const void *value;              // used in the comparison
     vector<string> attributeNames;  // a list of projected attributes
-    RID temp{0,0};
+    RID tracker{0,0};
+    AttrLength attrLength;
+    AttrType attrType;
 };
 
 class RecordBasedFileManager {
@@ -159,6 +164,10 @@ class RecordBasedFileManager {
             const vector<string> &attributeNames,  // a list of projected attributes
             RBFM_ScanIterator &rbfm_ScanIterator);
 
+    RC readAttributeHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data, int flag, char *record_);
+
+    RC readRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data, int flag, char *page_);
+
    public:
    protected:
     RecordBasedFileManager();
@@ -176,8 +185,6 @@ class RecordBasedFileManager {
     ssize_t createRecord(const vector<Attribute> &recordDescriptor, const void *data, void *record);   //create record and calculate record size
     RC updateRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor,
                           void *record, RID &originalRid, RID &currentRid, int flag, ssize_t recordSize);
-    RC readRecordHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data, int flag, char *page_);
-    RC readAttributeHelper(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, const string &attributeName, void *data, int flag, char *record_);
 };
 
 #endif
