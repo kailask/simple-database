@@ -46,7 +46,7 @@ void RBFM_ScanIterator::prepareTuple(char *dest, char *record) {
         memcpy(&fieldEnd, &record[nullLengthRecord + (sizeof(field_offset_t) * index)], sizeof(field_offset_t));
         if (recordDescriptor[index].name == attributeNames[attrIndex]) {
             if (record[index / CHAR_BIT] << (index % CHAR_BIT) & 0x80) {
-                dest[attrIndex / CHAR_BIT] = (dest[attrIndex / CHAR_BIT] << (attrIndex % CHAR_BIT)) | 0x80;
+                dest[attrIndex / CHAR_BIT] |= (0x80 >> (attrIndex % CHAR_BIT));
                 continue;
             }
 
