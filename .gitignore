@@ -34,6 +34,6 @@
 .DS_Store
 .vscode
 *.sh
-rbftest*
+# rbftest*
 .devcontainer
 .editorconfig
