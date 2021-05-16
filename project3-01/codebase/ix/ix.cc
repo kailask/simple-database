@@ -122,6 +122,7 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
                         break;
                     }
                 case TypeVarChar:
+                    //actually might have to memcpy and add null terminators bc of edge cases
                     if(strcmp(static_cast<char*>(key + sizeof(unsigned)), static_cast<char*>(searchKey + sizeof(unsigned))) <= 0) {
                         matchFound = true;
                         //TODO: call data to get the pageRef and reuse temp object and use new pageRef
@@ -129,6 +130,7 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
                     }
             }
 
+            //break from iterator loop if match found
             if(matchFound) break;
             ++itor;
         }
