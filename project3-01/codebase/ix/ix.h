@@ -1,8 +1,9 @@
 #ifndef _ix_h_
 #define _ix_h_
 
-#include <vector>
+#include <cstring>
 #include <string>
+#include <vector>
 
 #include "../rbf/rbfm.h"
 
@@ -11,7 +12,17 @@
 #define SUCCESS 0
 #define FAILURE 1
 
-#define INVALID_PAGE -1
+#define NULL_PAGE -1
+
+//Page attribute types
+typedef uint32_t page_metadata_t;
+typedef int32_t page_pointer_t;
+
+//Index page types
+enum PageType {
+    LeafPage,
+    InternalPage
+};
 
 class IX_ScanIterator;
 class IXFileHandle;
@@ -52,54 +63,38 @@ class IndexManager {
     // Print the B+ tree in pre-order (in a JSON record format)
     void printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const;
 
-   protected:
-    IndexManager();
-    ~IndexManager();
-
-   private:
-    static IndexManager *_index_manager;
-    static PagedFileManager *pfm;
-
-   public:
     class IndexPage {
        public:
         //Page iterator
         class iterator;
-
-        enum PAGE_TYPE {
-            LEAF_PAGE,
-            INTERNAL_PAGE
-        };
-
-        //Page attribute types
-        typedef uint32_t page_metadata_t;
-        typedef int32_t page_pointer_t;
 
         //Bitmasks for metadata
         static const uint32_t offset_mask = 0x7FFFFFFF;
         static const uint32_t type_mask = 0x80000000;
 
         //Constructors
-        IndexPage(FileHandle &file, ssize_t page_num = -1);              //Read in page
-        IndexPage(PAGE_TYPE type, void *initial_data, size_t data_size,  //Create new page
-                  page_pointer_t next_ = INVALID_PAGE, page_pointer_t prev_ = INVALID_PAGE);
-        ~IndexPage();
+        IndexPage(FileHandle &file, size_t page_num);                   //Read in page
+        IndexPage(PageType type, void *initial_data, size_t data_size,  //Create new page
+                  page_pointer_t next_ = NULL_PAGE, page_pointer_t prev_ = NULL_PAGE);
+        ~IndexPage() { delete data; };
 
         //Iterator
-        iterator begin(Attribute &attr);
-        iterator end(Attribute &attr);
-        // void insert(iterator &it);
-        // void erase(iterator &it);
+        iterator begin(AttrType attr_type);
+        iterator end(AttrType attr_type);
+        void insert(iterator &it, char *entry, size_t entry_size);
+        RC erase(iterator &it);
 
         //Commit file to disk
-        RC write(FileHandle &file, ssize_t page_num = -1);
+        RC write(FileHandle &file, ssize_t page_num = -1) const;
+        //Split data after iterator into new page
+        IndexPage *split(iterator &it);
 
-        PAGE_TYPE getType() const { return (*metadata & type_mask) ? LEAF_PAGE : INTERNAL_PAGE; }
+        PageType getType() const { return (*metadata & type_mask) ? LeafPage : InternalPage; }
         uint32_t getOffset() const { return *metadata & offset_mask; }
         page_pointer_t getNextPage() const { return *next; }
         page_pointer_t getPrevPage() const { return *prev; }
 
-        RC setData(FileHandle &file, size_t page_num);
+        RC setData(FileHandle &file, size_t page_num) { return file.readPage(page_num, data); };
         void setNextPage(page_pointer_t n) { *next = n; }
         void setPrevPage(page_pointer_t p) { *prev = p; }
 
@@ -117,14 +112,58 @@ class IndexManager {
 
     class IndexPage::iterator {
        public:
-        iterator(Attribute &attr_, PAGE_TYPE type_, char *where_) : attr(attr_), type(type_), where(where_){};
+        iterator(AttrType attr_type_, PageType page_type_, char *where_, const char *page_)
+            : attr_type(attr_type_), page_type(page_type_), where(where_), page(page_){};
+
+        //Get Value
+        const char *get() const { return (page_type == InternalPage) ? where : where + calcNextKeySize(); };
+        //Get Key
+        const char *operator*() const { return (page_type == LeafPage) ? where : where + sizeof(page_pointer_t); };
+
+        bool operator==(const iterator &that) const { return this->where == that.where; }
+        bool operator!=(const iterator &that) const { return this->where != that.where; }
+        iterator &operator++() {
+            where += calcNextEntrySize();
+            return *this;
+        };
+
+        size_t getOffset() const { return where - page; }
 
        private:
-        const Attribute attr;
-        const PAGE_TYPE type;
+        friend class IndexPage;
+        const AttrType attr_type;
+        const PageType page_type;
         char *where;
+        const char *page;
+
+        const size_t calcNextKeySize() const {
+            switch (attr_type) {
+                case TypeInt:
+                    return INT_SIZE;
+                case TypeReal:
+                    return REAL_SIZE;
+                case TypeVarChar:
+                    void *varchar_length_start = (page_type == LeafPage) ? where : where + sizeof(page_pointer_t);
+                    unsigned varchar_length = 0;
+                    memcpy(&varchar_length, varchar_length_start, VARCHAR_LENGTH_SIZE);
+                    return VARCHAR_LENGTH_SIZE + varchar_length;
+            }
+            return 0;
+        };
+
+        const size_t calcNextEntrySize() const {
+            size_t data_size = (page_type == LeafPage) ? sizeof(RID) : sizeof(page_pointer_t);
+            return data_size + calcNextKeySize();
+        }
     };
 
+   protected:
+    IndexManager();
+    ~IndexManager();
+
+   private:
+    static IndexManager *_index_manager;
+    static PagedFileManager *pfm;
     IndexPage search(Attribute &attr, void *key, IXFileHandle &ixfileHandle);
 };
 
