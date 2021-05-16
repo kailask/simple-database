@@ -13,6 +13,7 @@ IndexManager* IndexManager::instance()
 
 IndexManager::IndexManager()
 {
+    // initialize internal pfm
 }
 
 IndexManager::~IndexManager()
@@ -98,4 +99,3 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
 {
     return -1;
 }
-
