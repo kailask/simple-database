@@ -113,7 +113,7 @@ IndexManager::IndexPage::IndexPage(PAGE_TYPE type, void *initial_data, size_t da
         *prev = prev_;
     }
 
-    *metadata = (data_offset & offset_mask) | (type_bit << ((sizeof(page_metadata_t) * CHAR_BIT) - 1));
+    *metadata = ((data_offset + data_size) & offset_mask) | (type_bit << ((sizeof(page_metadata_t) * CHAR_BIT) - 1));
     memcpy(data + data_offset, initial_data, data_size);
 }
 
@@ -141,12 +141,15 @@ IndexManager::IndexPage::~IndexPage() {
     delete data;
 }
 
-// IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(Attribute &attr) {
-//     return iterator(attr, getType(), data);
-// }
+IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(Attribute &attr) {
+    PAGE_TYPE type = getType();
+    uint32_t data_start_offset = sizeof(page_metadata_t);
+    if (type == LEAF_PAGE) data_start_offset += sizeof(page_pointer_t) * 2;
+    return iterator(attr, type, data + data_start_offset);
+}
 
-// IndexManager::IndexPage::iterator IndexManager::IndexPage::end(Attribute &attr) {
-//     PAGE_TYPE type = getType();
-//     if (type == INTERNAL_PAGE) return iterator(attr, type, data + getOffset() - sizeof(page_pointer_t));
-//     return iterator(attr, type, data + getOffset());
-// }
+IndexManager::IndexPage::iterator IndexManager::IndexPage::end(Attribute &attr) {
+    PAGE_TYPE type = getType();  //internal pages "end" before last page pointer
+    if (type == INTERNAL_PAGE) return iterator(attr, type, data + getOffset() - sizeof(page_pointer_t));
+    return iterator(attr, type, data + getOffset());
+}

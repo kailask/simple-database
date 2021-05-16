@@ -57,6 +57,7 @@ class IndexManager {
    private:
     static IndexManager *_index_manager;
 
+   public:
     class IndexPage {
        public:
         //Page iterator
@@ -82,8 +83,8 @@ class IndexManager {
         ~IndexPage();
 
         //Iterator
-        // iterator begin(Attribute &attr);
-        // iterator end(Attribute &attr);
+        iterator begin(Attribute &attr);
+        iterator end(Attribute &attr);
         // void insert(iterator &it);
         // void erase(iterator &it);
 
@@ -96,12 +97,13 @@ class IndexManager {
         page_pointer_t getPrevPage() const { return *prev; }
 
         RC setData(FileHandle &file, size_t page_num);
-        void setOffset(uint32_t offset);
         void setNextPage(page_pointer_t n) { *next = n; }
         void setPrevPage(page_pointer_t p) { *prev = p; }
 
        private:
         void setupPointers();
+        void setOffset(uint32_t offset);
+
         char *data;
         page_metadata_t *metadata;
 
@@ -110,15 +112,15 @@ class IndexManager {
         page_pointer_t *prev = NULL;
     };
 
-    // class IndexPage::iterator {
-    //    public:
-    //     iterator(Attribute &attr_, PAGE_TYPE type_, char *where_) : attr(attr_), type(type_), where(where_){};
+    class IndexPage::iterator {
+       public:
+        iterator(Attribute &attr_, PAGE_TYPE type_, char *where_) : attr(attr_), type(type_), where(where_){};
 
-    //    private:
-    //     const Attribute attr;
-    //     const PAGE_TYPE type;
-    //     char *where;
-    // };
+       private:
+        const Attribute attr;
+        const PAGE_TYPE type;
+        char *where;
+    };
 };
 
 class IX_ScanIterator {
