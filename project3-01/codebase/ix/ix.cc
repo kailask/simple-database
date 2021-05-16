@@ -100,6 +100,8 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
 
     //start at the root
     while(temp.getType() != IndexPage::LEAF_PAGE) {
+        bool matchFound = false;
+
         //create an iterator
         IndexPage::iterator itor = temp.begin(attr);
         while(itor != temp.end(attr)) {
@@ -107,14 +109,33 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
 
             switch (attr.type) {
                 case TypeInt:
-                    
+                    if(*static_cast<int*>(key) <= *static_cast<int*>(searchKey)) {
+                        matchFound = true;
+                        //TODO: call data to get the pageRef and reuse temp object and use new pageRef
+                        break;
+                    }
 
                 case TypeReal:
+                    if(*static_cast<float*>(key) <= *static_cast<float*>(searchKey)) {
+                        matchFound = true;
+                        //TODO: call data to get the pageRef and reuse temp object and use new pageRef
+                        break;
+                    }
                 case TypeVarChar:
+                    if(strcmp(static_cast<char*>(key + sizeof(unsigned)), static_cast<char*>(searchKey + sizeof(unsigned))) <= 0) {
+                        matchFound = true;
+                        //TODO: call data to get the pageRef and reuse temp object and use new pageRef
+                        break;
+                    }
             }
-        }
-    }
 
+            if(matchFound) break;
+            ++itor;
+        }
+
+        //TODO: if itor is = to end but match was not found call getData() again to get the right pageRef
+    }
+    return temp;
 }
 
 //IndexPage
