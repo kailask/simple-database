@@ -84,6 +84,8 @@ class IndexManager {
 
         //Commit file to disk
         RC write(FileHandle &file, ssize_t page_num = -1) const;
+        //Split data after iterator into new page
+        IndexPage *split(iterator &it);
 
         PageType getType() const { return (*metadata & type_mask) ? LeafPage : InternalPage; }
         uint32_t getOffset() const { return *metadata & offset_mask; }
@@ -108,8 +110,8 @@ class IndexManager {
 
     class IndexPage::iterator {
        public:
-        iterator(AttrType attr_type_, PageType page_type_, char *where_)
-            : attr_type(attr_type_), page_type(page_type_), where(where_){};
+        iterator(AttrType attr_type_, PageType page_type_, char *where_, const char *page_)
+            : attr_type(attr_type_), page_type(page_type_), where(where_), page(page_){};
 
         //Get Value
         const char *get() const { return (page_type == InternalPage) ? where : where + calcNextKeySize(); };
@@ -123,11 +125,14 @@ class IndexManager {
             return *this;
         };
 
+        size_t getOffset() const { return where - page; }
+
        private:
         friend class IndexPage;
         const AttrType attr_type;
         const PageType page_type;
         char *where;
+        const char *page;
 
         const size_t calcNextKeySize() const {
             switch (attr_type) {

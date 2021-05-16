@@ -142,29 +142,36 @@ IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(AttrType attr_t
     PageType page_type = getType();
     size_t data_start_offset = sizeof(page_metadata_t);
     if (page_type == LeafPage) data_start_offset += sizeof(page_pointer_t) * 2;
-    return iterator(attr_type, page_type, data + data_start_offset);
+    return iterator(attr_type, page_type, data + data_start_offset, data);
 }
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::end(AttrType attr_type) {
     PageType page_type = getType();
     char *it_pos = data + getOffset();
     if (page_type == InternalPage) it_pos -= sizeof(page_pointer_t);  //internal pages "end" before last page pointer
-    return iterator(attr_type, page_type, it_pos);
+    return iterator(attr_type, page_type, it_pos, data);
 }
 
 RC IndexManager::IndexPage::erase(iterator &it) {
     if (it == end(it.attr_type)) return FAILURE;  //Can't erase end
 
     size_t entry_size = it.calcNextEntrySize();
-    size_t bytes_to_move = getOffset() - (it.where - data) - entry_size;
+    size_t bytes_to_move = getOffset() - it.getOffset() - entry_size;
     memmove(it.where, it.where + entry_size, bytes_to_move);
     setOffset(getOffset() - entry_size);
     return SUCCESS;
 };
 
 void IndexManager::IndexPage::insert(iterator &it, char *entry, size_t entry_size) {
-    size_t bytes_to_move = getOffset() - (it.where - data);
+    size_t bytes_to_move = getOffset() - it.getOffset();
     memmove(it.where + entry_size, it.where, bytes_to_move);
     memcpy(it.where, entry, entry_size);
     setOffset(getOffset() + entry_size);
 };
+
+//TODO: Only works for leaf pages
+IndexManager::IndexPage *IndexManager::IndexPage::split(iterator &it) {
+    size_t new_page_size = getOffset() - it.getOffset();
+    setOffset(getOffset() - new_page_size);
+    return new IndexPage(getType(), it.where, new_page_size);
+}
