@@ -143,7 +143,7 @@ IndexManager::IndexPage::~IndexPage() {
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(Attribute &attr) {
     PAGE_TYPE type = getType();
-    uint32_t data_start_offset = sizeof(page_metadata_t);
+    size_t data_start_offset = sizeof(page_metadata_t);
     if (type == LEAF_PAGE) data_start_offset += sizeof(page_pointer_t) * 2;
     return iterator(attr, type, data + data_start_offset);
 }
@@ -152,4 +152,28 @@ IndexManager::IndexPage::iterator IndexManager::IndexPage::end(Attribute &attr) 
     PAGE_TYPE type = getType();  //internal pages "end" before last page pointer
     if (type == INTERNAL_PAGE) return iterator(attr, type, data + getOffset() - sizeof(page_pointer_t));
     return iterator(attr, type, data + getOffset());
+}
+
+//IndexPage::iterator
+IndexManager::IndexPage::iterator &IndexManager::IndexPage::iterator::operator++() {
+    size_t entry_size = (type == LEAF_PAGE) ? sizeof(RID) : sizeof(page_pointer_t);
+
+    switch (attr.type) {
+        case AttrType::TypeInt:
+            entry_size += INT_SIZE;
+            break;
+        case AttrType::TypeReal:
+            entry_size += REAL_SIZE;
+            break;
+        case AttrType::TypeVarChar:
+            entry_size += VARCHAR_LENGTH_SIZE;
+            char *varchar_length_start = (type == LEAF_PAGE) ? where : where + sizeof(page_pointer_t);
+            unsigned varchar_length = 0;
+            memcpy(&varchar_length, varchar_length_start, VARCHAR_LENGTH_SIZE);
+            entry_size += varchar_length;
+            break;
+    }
+
+    where += entry_size;
+    return *this;
 }

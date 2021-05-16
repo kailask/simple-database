@@ -116,6 +116,15 @@ class IndexManager {
        public:
         iterator(Attribute &attr_, PAGE_TYPE type_, char *where_) : attr(attr_), type(type_), where(where_){};
 
+        iterator &operator++();
+        iterator &operator*();
+        bool operator==(const iterator &that) const {
+            return this->where == that.where;
+        }
+        bool operator!=(const iterator &that) const {
+            return this->where != that.where;
+        }
+
        private:
         const Attribute attr;
         const PAGE_TYPE type;
