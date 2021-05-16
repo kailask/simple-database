@@ -11,6 +11,8 @@
 #define SUCCESS 0
 #define FAILURE 1
 
+#define INVALID_PAGE -1
+
 class IX_ScanIterator;
 class IXFileHandle;
 
@@ -58,6 +60,7 @@ class IndexManager {
     static IndexManager *_index_manager;
     static PagedFileManager *pfm;
 
+   public:
     class IndexPage {
        public:
         //Page iterator
@@ -70,30 +73,46 @@ class IndexManager {
 
         //Page attribute types
         typedef uint32_t page_metadata_t;
-        typedef uint32_t page_pointer_t;
+        typedef int32_t page_pointer_t;
 
-        const uint32_t offset_mask = 0x7FFFFFFF;
-        const uint32_t type_mask = 0x80000000;
+        //Bitmasks for metadata
+        static const uint32_t offset_mask = 0x7FFFFFFF;
+        static const uint32_t type_mask = 0x80000000;
 
-        IndexPage(FileHandle &file, ssize_t page_num = -1);               //Read in page
-        IndexPage(PAGE_TYPE type, void *initial_data, size_t data_size);  //Create new page
+        //Constructors
+        IndexPage(FileHandle &file, ssize_t page_num = -1);              //Read in page
+        IndexPage(PAGE_TYPE type, void *initial_data, size_t data_size,  //Create new page
+                  page_pointer_t next_ = INVALID_PAGE, page_pointer_t prev_ = INVALID_PAGE);
         ~IndexPage();
 
+        //Iterator
         iterator begin(Attribute &attr);
         iterator end(Attribute &attr);
-        void insert(iterator &it);
-        void erase(iterator &it);
+        // void insert(iterator &it);
+        // void erase(iterator &it);
 
         //Commit file to disk
         RC write(FileHandle &file, ssize_t page_num = -1);
 
         PAGE_TYPE getType() const { return (*metadata & type_mask) ? LEAF_PAGE : INTERNAL_PAGE; }
         uint32_t getOffset() const { return *metadata & offset_mask; }
-        void setMetadata(PAGE_TYPE type, uint32_t offset);
+        page_pointer_t getNextPage() const { return *next; }
+        page_pointer_t getPrevPage() const { return *prev; }
+
+        RC setData(FileHandle &file, size_t page_num);
+        void setNextPage(page_pointer_t n) { *next = n; }
+        void setPrevPage(page_pointer_t p) { *prev = p; }
 
        private:
+        void setupPointers();
+        void setOffset(uint32_t offset);
+
         char *data;
         page_metadata_t *metadata;
+
+        //Leaf pages only
+        page_pointer_t *next = NULL;
+        page_pointer_t *prev = NULL;
     };
 
     class IndexPage::iterator {

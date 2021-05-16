@@ -23,7 +23,7 @@ RC IndexManager::createFile(const string &fileName) {
     FileHandle file;
     if (pfm->openFile(fileName, file) != SUCCESS) return FAILURE;
 
-    IndexPage::page_pointer_t initial_pointer = 1;
+    IndexPage::page_pointer_t initial_pointer = 1;  //Initial leaf page is #1
     IndexPage root(IndexPage::INTERNAL_PAGE, &initial_pointer, sizeof(initial_pointer));
     if (root.write(file) != SUCCESS) return FAILURE;
 
@@ -119,19 +119,33 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
 
 //IndexPage
 IndexManager::IndexPage::IndexPage(FileHandle &file, ssize_t page_num) {
-    data = static_cast<char *>(aligned_alloc(sizeof(page_metadata_t), PAGE_SIZE));
-    metadata = reinterpret_cast<page_metadata_t *>(data);
+    setupPointers();
 
     //Error not handled
     file.readPage(page_num, data);
 }
 
-IndexManager::IndexPage::IndexPage(PAGE_TYPE type, void *initial_data, size_t data_size) {
+IndexManager::IndexPage::IndexPage(PAGE_TYPE type, void *initial_data, size_t data_size, page_pointer_t next_, page_pointer_t prev_) {
+    setupPointers();
+
+    uint32_t type_bit = 0b0;
+    uint32_t data_offset = sizeof(page_metadata_t);
+    if (type == LEAF_PAGE) {
+        type_bit = 0b1;
+        data_offset += sizeof(page_pointer_t) * 2;  //Leaf pages have page pointers
+        *next = next_;
+        *prev = prev_;
+    }
+
+    *metadata = ((data_offset + data_size) & offset_mask) | (type_bit << ((sizeof(page_metadata_t) * CHAR_BIT) - 1));
+    memcpy(data + data_offset, initial_data, data_size);
+}
+
+void IndexManager::IndexPage::setupPointers() {
     data = static_cast<char *>(aligned_alloc(sizeof(page_metadata_t), PAGE_SIZE));
     metadata = reinterpret_cast<page_metadata_t *>(data);
-
-    setMetadata(type, sizeof(page_metadata_t) + data_size);
-    memcpy(data + sizeof(page_metadata_t), initial_data, data_size);
+    prev = reinterpret_cast<page_pointer_t *>(metadata + sizeof(page_metadata_t));
+    next = reinterpret_cast<page_pointer_t *>(prev + sizeof(page_pointer_t));
 }
 
 RC IndexManager::IndexPage::write(FileHandle &file, ssize_t page_num) {
@@ -139,9 +153,12 @@ RC IndexManager::IndexPage::write(FileHandle &file, ssize_t page_num) {
     return file.appendPage(data);
 }
 
-void IndexManager::IndexPage::setMetadata(PAGE_TYPE type, uint32_t offset) {
-    uint32_t t = (type == LEAF_PAGE) ? 0b1 : 0b0;
-    *metadata = (offset & offset_mask) | (t << ((sizeof(page_metadata_t) * CHAR_BIT) - 1));
+void IndexManager::IndexPage::setOffset(uint32_t offset) {
+    *metadata = (offset & offset_mask) | (*metadata & type_mask);
+}
+
+RC IndexManager::IndexPage::setData(FileHandle &file, size_t page_num) {
+    return file.readPage(page_num, data);
 }
 
 IndexManager::IndexPage::~IndexPage() {
@@ -149,11 +166,14 @@ IndexManager::IndexPage::~IndexPage() {
 }
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(Attribute &attr) {
-    return iterator(attr, getType(), data);
+    PAGE_TYPE type = getType();
+    uint32_t data_start_offset = sizeof(page_metadata_t);
+    if (type == LEAF_PAGE) data_start_offset += sizeof(page_pointer_t) * 2;
+    return iterator(attr, type, data + data_start_offset);
 }
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::end(Attribute &attr) {
-    PAGE_TYPE type = getType();
+    PAGE_TYPE type = getType();  //internal pages "end" before last page pointer
     if (type == INTERNAL_PAGE) return iterator(attr, type, data + getOffset() - sizeof(page_pointer_t));
     return iterator(attr, type, data + getOffset());
 }
