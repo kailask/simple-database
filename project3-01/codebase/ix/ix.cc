@@ -25,10 +25,10 @@ RC IndexManager::createFile(const string &fileName) {
     if (pfm->openFile(fileName, file) != SUCCESS) return FAILURE;
 
     page_pointer_t initial_pointer = 1;  //Initial leaf page is #1
-    IndexPage root(INTERNAL_PAGE, &initial_pointer, sizeof(initial_pointer));
+    IndexPage root(InternalPage, &initial_pointer, sizeof(initial_pointer));
     if (root.write(file) != SUCCESS) return FAILURE;
 
-    IndexPage leaf(LEAF_PAGE, NULL, 0);
+    IndexPage leaf(LeafPage, NULL, 0);
     if (leaf.write(file) != SUCCESS) return FAILURE;
 
     return SUCCESS;
@@ -102,14 +102,14 @@ IndexManager::IndexPage::IndexPage(FileHandle &file, size_t page_num) {
     file.readPage(page_num, data);
 }
 
-IndexManager::IndexPage::IndexPage(PAGE_TYPE type, void *initial_data, size_t data_size,
+IndexManager::IndexPage::IndexPage(PageType type, void *initial_data, size_t data_size,
                                    page_pointer_t next_, page_pointer_t prev_) {
     setupPointers();
 
     //Set initial metadata
     uint32_t type_bit = 0b0;
     uint32_t data_offset = sizeof(page_metadata_t);
-    if (type == LEAF_PAGE) {
+    if (type == LeafPage) {
         type_bit = 0b1;
         data_offset += sizeof(page_pointer_t) * 2;  //Leaf pages have page pointers
         *next = next_;
@@ -139,16 +139,16 @@ void IndexManager::IndexPage::setOffset(uint32_t offset) {
 }
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(AttrType attr_type) {
-    PAGE_TYPE page_type = getType();
+    PageType page_type = getType();
     size_t data_start_offset = sizeof(page_metadata_t);
-    if (page_type == LEAF_PAGE) data_start_offset += sizeof(page_pointer_t) * 2;
+    if (page_type == LeafPage) data_start_offset += sizeof(page_pointer_t) * 2;
     return iterator(attr_type, page_type, data + data_start_offset);
 }
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::end(AttrType attr_type) {
-    PAGE_TYPE page_type = getType();
+    PageType page_type = getType();
     char *it_pos = data + getOffset();
-    if (page_type == INTERNAL_PAGE) it_pos -= sizeof(page_pointer_t);  //internal pages "end" before last page pointer
+    if (page_type == InternalPage) it_pos -= sizeof(page_pointer_t);  //internal pages "end" before last page pointer
     return iterator(attr_type, page_type, it_pos);
 }
 
@@ -160,4 +160,11 @@ RC IndexManager::IndexPage::erase(iterator &it) {
     memmove(it.where, it.where + entry_size, bytes_to_move);
     setOffset(getOffset() - entry_size);
     return SUCCESS;
+};
+
+void IndexManager::IndexPage::insert(iterator &it, char *entry, size_t entry_size) {
+    size_t bytes_to_move = getOffset() - (it.where - data);
+    memmove(it.where + entry_size, it.where, bytes_to_move);
+    memcpy(it.where, entry, entry_size);
+    setOffset(getOffset() + entry_size);
 };
