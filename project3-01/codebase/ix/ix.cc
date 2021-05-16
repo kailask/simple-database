@@ -1,5 +1,6 @@
-#include <string.h>
 #include "ix.h"
+
+#include <cstring>
 
 IndexManager *IndexManager::_index_manager = 0;
 
@@ -23,11 +24,11 @@ RC IndexManager::createFile(const string &fileName) {
     FileHandle file;
     if (pfm->openFile(fileName, file) != SUCCESS) return FAILURE;
 
-    IndexPage::page_pointer_t initial_pointer = 1;  //Initial leaf page is #1
-    IndexPage root(IndexPage::INTERNAL_PAGE, &initial_pointer, sizeof(initial_pointer));
+    page_pointer_t initial_pointer = 1;  //Initial leaf page is #1
+    IndexPage root(INTERNAL_PAGE, &initial_pointer, sizeof(initial_pointer));
     if (root.write(file) != SUCCESS) return FAILURE;
 
-    IndexPage leaf(IndexPage::LEAF_PAGE, NULL, 0);
+    IndexPage leaf(LEAF_PAGE, NULL, 0);
     if (leaf.write(file) != SUCCESS) return FAILURE;
 
     return SUCCESS;
@@ -94,7 +95,7 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
 }
 
 //IndexPage
-IndexManager::IndexPage::IndexPage(FileHandle &file, ssize_t page_num) {
+IndexManager::IndexPage::IndexPage(FileHandle &file, size_t page_num) {
     setupPointers();
 
     //Error not handled
@@ -157,22 +158,7 @@ IndexManager::IndexPage::iterator IndexManager::IndexPage::end(Attribute &attr) 
 //IndexPage::iterator
 IndexManager::IndexPage::iterator &IndexManager::IndexPage::iterator::operator++() {
     size_t entry_size = (type == LEAF_PAGE) ? sizeof(RID) : sizeof(page_pointer_t);
-
-    switch (attr.type) {
-        case AttrType::TypeInt:
-            entry_size += INT_SIZE;
-            break;
-        case AttrType::TypeReal:
-            entry_size += REAL_SIZE;
-            break;
-        case AttrType::TypeVarChar:
-            entry_size += VARCHAR_LENGTH_SIZE;
-            char *varchar_length_start = (type == LEAF_PAGE) ? where : where + sizeof(page_pointer_t);
-            unsigned varchar_length = 0;
-            memcpy(&varchar_length, varchar_length_start, VARCHAR_LENGTH_SIZE);
-            entry_size += varchar_length;
-            break;
-    }
+    entry_size += calcNextKeySize();
 
     where += entry_size;
     return *this;
