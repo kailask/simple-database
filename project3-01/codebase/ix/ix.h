@@ -56,6 +56,7 @@ class IndexManager {
 
    private:
     static IndexManager *_index_manager;
+    static PagedFileManager *pfm;
 
     class IndexPage {
        public:
@@ -104,6 +105,8 @@ class IndexManager {
         const PAGE_TYPE type;
         char *where;
     };
+
+    IndexPage search(Attribute &attr, void *key, IXFileHandle &ixfileHandle);
 };
 
 class IX_ScanIterator {
@@ -127,6 +130,7 @@ class IXFileHandle {
     unsigned ixReadPageCounter;
     unsigned ixWritePageCounter;
     unsigned ixAppendPageCounter;
+    FileHandle fileHandle;
 
     // Constructor
     IXFileHandle();

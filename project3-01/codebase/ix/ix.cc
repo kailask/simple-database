@@ -11,13 +11,13 @@ IndexManager *IndexManager::instance() {
 }
 
 IndexManager::IndexManager() {
+    pfm = PagedFileManager::instance();
 }
 
 IndexManager::~IndexManager() {
 }
 
 RC IndexManager::createFile(const string &fileName) {
-    PagedFileManager *pfm = PagedFileManager::instance();
     if (pfm->createFile(fileName) != SUCCESS) return FAILURE;
 
     FileHandle file;
@@ -34,15 +34,15 @@ RC IndexManager::createFile(const string &fileName) {
 }
 
 RC IndexManager::destroyFile(const string &fileName) {
-    return -1;
+    return pfm->destroyFile(fileName);
 }
 
 RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle) {
-    return -1;
+    return pfm->openFile(fileName, ixfileHandle.fileHandle);
 }
 
 RC IndexManager::closeFile(IXFileHandle &ixfileHandle) {
-    return -1;
+    return pfm->closeFile(ixfileHandle.fileHandle);
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {
@@ -91,6 +91,30 @@ IXFileHandle::~IXFileHandle() {
 
 RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount) {
     return -1;
+}
+
+//Helper functions
+IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileHandle &ixfileHandle) {
+    //create indexPage object
+    IndexPage temp(ixfileHandle.fileHandle, 0);
+
+    //start at the root
+    while(temp.getType() != IndexPage::LEAF_PAGE) {
+        //create an iterator
+        IndexPage::iterator itor = temp.begin(attr);
+        while(itor != temp.end(attr)) {
+            void* searchKey = *itor;
+
+            switch (attr.type) {
+                case TypeInt:
+                    
+
+                case TypeReal:
+                case TypeVarChar:
+            }
+        }
+    }
+
 }
 
 //IndexPage
