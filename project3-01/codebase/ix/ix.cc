@@ -100,44 +100,80 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
     IndexPage temp(ixfileHandle.fileHandle, 0);
 
     //start at the root
-    while(temp.getType() != LeafPage) {
+    while (temp.getType() != LeafPage) {
         bool matchFound = false;
+        page_pointer_t pageRef;
 
-        //create an iterator
+        //create an iterator and search!
         IndexPage::iterator itor = temp.begin(attr.type);
-        while(itor != temp.end(attr.type)) {
-            const void* searchKey = *itor;
-
+        while (itor != temp.end(attr.type)) {
             switch (attr.type) {
-                case TypeInt:
-                    if(*static_cast<const int*>(key) <= *static_cast<const int*>(searchKey)) {
-                        matchFound = true;
-                        //TODO: call data to get the pageRef and reuse temp object and use new pageRef
-                        break;
-                    }
+                case TypeInt: {
+                    int targetKeyInt;
+                    memcpy(&targetKeyInt, key, INT_SIZE);
 
-                case TypeReal:
-                    if(*static_cast<const float*>(key) <= *static_cast<const float*>(searchKey)) {
+                    int searchKeyInt;
+                    memcpy(&searchKeyInt, *itor, INT_SIZE);
+
+                    if (targetKeyInt <= searchKeyInt) {
                         matchFound = true;
-                        //TODO: call data to get the pageRef and reuse temp object and use new pageRef
-                        break;
+                        memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+                        temp.setData(ixfileHandle.fileHandle, pageRef);
                     }
-                case TypeVarChar:
-                    //actually might have to memcpy and add null terminators bc of edge cases
-                    if(strcmp(static_cast<const char*>(key + sizeof(unsigned)), static_cast<const char*>(searchKey + sizeof(unsigned))) <= 0) {
+                    break;
+                }
+
+                case TypeReal: {
+                    float targetKeyFlt;
+                    memcpy(&targetKeyFlt, key, REAL_SIZE);
+
+                    float searchKeyFlt;
+                    memcpy(&searchKeyFlt, *itor, REAL_SIZE);
+
+                    if (targetKeyFlt <= searchKeyFlt) {
                         matchFound = true;
-                        //TODO: call data to get the pageRef and reuse temp object and use new pageRef
-                        break;
+                        memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+                        temp.setData(ixfileHandle.fileHandle, pageRef);
                     }
+                    break;
+                }
+
+                case TypeVarChar: {
+                    unsigned targetKeyLength;
+                    memcpy(&targetKeyLength, key, VARCHAR_LENGTH_SIZE);
+                    char targetKey[targetKeyLength + 1];
+                    memcpy(&targetKey, static_cast<char*>(key) + VARCHAR_LENGTH_SIZE, targetKeyLength);
+                    targetKey[targetKeyLength] = '\0';
+
+                    unsigned searchKeyLength;
+                    memcpy(&searchKeyLength, *itor, VARCHAR_LENGTH_SIZE);
+                    char searchKey[searchKeyLength + 1];
+                    memcpy(&searchKey, static_cast<const char*>(*itor) + VARCHAR_LENGTH_SIZE, searchKeyLength);
+                    searchKey[searchKeyLength] = '\0';
+
+                    if(strcmp(targetKey, searchKey) <= 0) {
+                        matchFound = true;
+                        memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+                        temp.setData(ixfileHandle.fileHandle, pageRef);
+                    }
+                    break;
+                }
+                //TODO: Error not handled in the default case
             }
 
             //break from iterator loop if match found
-            if(matchFound) break;
+            if (matchFound) break;
             ++itor;
         }
 
-        //TODO: if itor is = to end but match was not found call getData() again to get the right pageRef
+        //if match not found, call get() again to get the rightmost pageRef and set the Index page
+        if(!matchFound) {
+            memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+            temp.setData(ixfileHandle.fileHandle, pageRef);
+        }
     }
+
+    //return the leaf page
     return temp;
 }
 
