@@ -3,6 +3,7 @@
 #include <cstring>
 
 IndexManager *IndexManager::_index_manager = 0;
+PagedFileManager *IndexManager::pfm = NULL;
 
 IndexManager *IndexManager::instance() {
     if (!_index_manager)
