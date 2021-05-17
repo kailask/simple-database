@@ -169,7 +169,6 @@ void IndexManager::IndexPage::insert(iterator &it, char *entry, size_t entry_siz
     setOffset(getOffset() + entry_size);
 };
 
-//TODO: Only works for leaf pages
 IndexManager::IndexPage *IndexManager::IndexPage::split(iterator &it) {
     size_t new_page_size = getOffset() - it.getOffset();
     setOffset(getOffset() - new_page_size);
