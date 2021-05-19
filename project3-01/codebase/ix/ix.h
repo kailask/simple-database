@@ -75,7 +75,7 @@ class IndexManager {
         //Possible page keys
         struct key {
             float r;
-            unsigned i;
+            signed i; 
             string s;
         };
 

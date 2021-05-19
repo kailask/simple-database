@@ -95,88 +95,92 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
     return -1;
 }
 
-//IndexManager ====================================================================
-IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileHandle &ixfileHandle) {
-    //create indexPage object
-    IndexPage temp(ixfileHandle.fileHandle, 0);
+//IndexManager helper functions ========================================================================
 
-    //start at the root
-    while (temp.getType() != LeafPage) {
-        bool matchFound = false;
-        page_pointer_t pageRef;
+//TODO: createKey() to create key struct and pass void pointer and attr
+//TODO: compareKey() to compare 2 structs
 
-        //create an iterator and search!
-        IndexPage::iterator itor = temp.begin(attr.type);
-        while (itor != temp.end(attr.type)) {
-            switch (attr.type) {
-                case TypeInt: {
-                    int targetKeyInt;
-                    memcpy(&targetKeyInt, key, INT_SIZE);
+// IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileHandle &ixfileHandle) {
+//     //create indexPage object
+//     IndexPage temp(ixfileHandle.fileHandle, 0);
 
-                    int searchKeyInt;
-                    memcpy(&searchKeyInt, *itor, INT_SIZE);
+//     //start at the root
+//     while (temp.getType() != LeafPage) {
+//         bool matchFound = false;
+//         page_pointer_t pageRef;
 
-                    if (targetKeyInt < searchKeyInt) {
-                        matchFound = true;
-                        memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-                        temp.setData(ixfileHandle.fileHandle, pageRef);
-                    }
-                    break;
-                }
+//         //create an iterator and search
+//         IndexPage::iterator itor = temp.begin(attr.type);
+//         while (itor != temp.end(attr.type)) {
+//             switch (attr.type) {
+//                 case TypeInt: {
+//                     int targetKeyInt;
+//                     memcpy(&targetKeyInt, key, INT_SIZE);
 
-                case TypeReal: {
-                    float targetKeyFlt;
-                    memcpy(&targetKeyFlt, key, REAL_SIZE);
+//                     int searchKeyInt;
+//                     memcpy(&searchKeyInt, *itor, INT_SIZE);
 
-                    float searchKeyFlt;
-                    memcpy(&searchKeyFlt, *itor, REAL_SIZE);
+//                     if (targetKeyInt < searchKeyInt) {
+//                         matchFound = true;
+//                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+//                         temp.setData(ixfileHandle.fileHandle, pageRef);
+//                     }
+//                     break;
+//                 }
 
-                    if (targetKeyFlt < searchKeyFlt) {
-                        matchFound = true;
-                        memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-                        temp.setData(ixfileHandle.fileHandle, pageRef);
-                    }
-                    break;
-                }
+//                 case TypeReal: {
+//                     float targetKeyFlt;
+//                     memcpy(&targetKeyFlt, key, REAL_SIZE);
 
-                case TypeVarChar: {
-                    unsigned targetKeyLength;
-                    memcpy(&targetKeyLength, key, VARCHAR_LENGTH_SIZE);
-                    char targetKey[targetKeyLength + 1];
-                    memcpy(&targetKey, static_cast<char*>(key) + VARCHAR_LENGTH_SIZE, targetKeyLength);
-                    targetKey[targetKeyLength] = '\0';
+//                     float searchKeyFlt;
+//                     memcpy(&searchKeyFlt, *itor, REAL_SIZE);
 
-                    unsigned searchKeyLength;
-                    memcpy(&searchKeyLength, *itor, VARCHAR_LENGTH_SIZE);
-                    char searchKey[searchKeyLength + 1];
-                    memcpy(&searchKey, static_cast<const char*>(*itor) + VARCHAR_LENGTH_SIZE, searchKeyLength);
-                    searchKey[searchKeyLength] = '\0';
+//                     if (targetKeyFlt < searchKeyFlt) {
+//                         matchFound = true;
+//                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+//                         temp.setData(ixfileHandle.fileHandle, pageRef);
+//                     }
+//                     break;
+//                 }
 
-                    if(strcmp(targetKey, searchKey) < 0) {
-                        matchFound = true;
-                        memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-                        temp.setData(ixfileHandle.fileHandle, pageRef);
-                    }
-                    break;
-                }
-                //TODO: Error not handled in the default case
-            }
+//                 case TypeVarChar: {
+//                     unsigned targetKeyLength;
+//                     memcpy(&targetKeyLength, key, VARCHAR_LENGTH_SIZE);
+//                     char targetKey[targetKeyLength + 1];
+//                     memcpy(&targetKey, static_cast<char*>(key) + VARCHAR_LENGTH_SIZE, targetKeyLength);
+//                     targetKey[targetKeyLength] = '\0';
 
-            //break from iterator loop if match found
-            if (matchFound) break;
-            ++itor;
-        }
+//                     unsigned searchKeyLength;
+//                     memcpy(&searchKeyLength, *itor, VARCHAR_LENGTH_SIZE);
+//                     char searchKey[searchKeyLength + 1];
+//                     memcpy(&searchKey, static_cast<const char*>(*itor) + VARCHAR_LENGTH_SIZE, searchKeyLength);
+//                     searchKey[searchKeyLength] = '\0';
 
-        //if match not found, call get() again to get the rightmost pageRef and set the Index page
-        if(!matchFound) {
-            memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-            temp.setData(ixfileHandle.fileHandle, pageRef);
-        }
-    }
+//                     if(strcmp(targetKey, searchKey) < 0) {
+//                         matchFound = true;
+//                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+//                         temp.setData(ixfileHandle.fileHandle, pageRef);
+//                     }
+//                     break;
+//                 }
+//                 //TODO: Error not handled in the default case
+//             }
 
-    //return the leaf page
-    return temp;
-}
+//             //break from iterator loop if match found
+//             if (matchFound) break;
+//             ++itor;
+//         }
+
+//         //if match not found, call get() again to get the rightmost pageRef and set the Index page
+//         if(!matchFound) {
+//             memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
+//             temp.setData(ixfileHandle.fileHandle, pageRef);
+//         }
+//     }
+
+//     //return the leaf page
+//     return temp;
+// }
 
 //IndexManager::IndexPage ==============================================================================
 
@@ -300,12 +304,13 @@ IndexManager::IndexPage IndexManager::IndexPage::split(iterator &it) {
     return {getType(), it.where, removed_data};
 }
 
+//TODO: inc itor in find
 IndexManager::IndexPage::iterator IndexManager::IndexPage::find(AttrType attr_type, key &search_key) const {
     iterator it = begin(attr_type);
     while (it != end(attr_type)) {
         switch (it.attr_type) {
             case AttrType::TypeInt:
-                if (it.getKey().i >= search_key.i) return it;
+                if (it.getKey().i >= search_key.i) return it; 
                 break;
             case AttrType::TypeReal:
                 if (it.getKey().r >= search_key.r) return it;
@@ -323,7 +328,7 @@ IndexManager::IndexPage::iterator IndexManager::IndexPage::find(AttrType attr_ty
 IndexManager::IndexPage::value IndexManager::IndexPage::iterator::getValue() const {
     if (page_type == LeafPage) {
         RID r;
-        memcpy(&r, where, sizeof(RID));
+        memcpy(&r, where + calcNextKeySize(), sizeof(RID));
         return {.rid = r};
     } else {
         page_pointer_t p;  //In internal pages value is before key
@@ -335,9 +340,9 @@ IndexManager::IndexPage::value IndexManager::IndexPage::iterator::getValue() con
 IndexManager::IndexPage::key IndexManager::IndexPage::iterator::getKey() const {
     switch (attr_type) {
         case AttrType::TypeInt: {
-            unsigned i;
+            signed i;
             memcpy(&i, where, INT_SIZE);
-            return {.i = i};
+            return {.i = i}; 
         }
         case AttrType::TypeReal: {
             float r;
