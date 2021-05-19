@@ -140,14 +140,14 @@ void IndexManager::IndexPage::setOffset(uint32_t offset) {
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(AttrType attr_type) {
     PageType page_type = getType();
-    size_t data_start_offset = sizeof(page_metadata_t);
-    if (page_type == LeafPage) data_start_offset += sizeof(page_pointer_t) * 2;
-    return iterator(attr_type, page_type, data + data_start_offset, data);
+    size_t it_pos = sizeof(page_metadata_t);
+    if (page_type == LeafPage) it_pos += sizeof(page_pointer_t) * 2;
+    return iterator(attr_type, page_type, it_pos, data);
 }
 
 IndexManager::IndexPage::iterator IndexManager::IndexPage::end(AttrType attr_type) {
     PageType page_type = getType();
-    char *it_pos = data + getOffset();
+    size_t it_pos = getOffset();
     if (page_type == InternalPage) it_pos -= sizeof(page_pointer_t);  //internal pages "end" before last page pointer
     return iterator(attr_type, page_type, it_pos, data);
 }

@@ -66,6 +66,20 @@ class IndexManager {
         //Page iterator
         class iterator;
 
+        //Possible page values
+        union value {
+            RID rid;
+            page_pointer_t pnum;
+        };
+
+        //Possible page keys
+        union key {
+            float r;
+            unsigned i;
+            string s;
+            ~key() {}
+        };
+
         //Bitmasks for metadata
         static const uint32_t offset_mask = 0x7FFFFFFF;
         static const uint32_t type_mask = 0x80000000;
@@ -79,7 +93,7 @@ class IndexManager {
         //Iterator
         iterator begin(AttrType attr_type);
         iterator end(AttrType attr_type);
-        void insert(iterator &it, char *entry, size_t entry_size);
+        void insert(iterator &it, char *entry, size_t entry_size);  //Pointers can be null
         RC erase(iterator &it);
 
         //Commit file to disk
@@ -110,13 +124,43 @@ class IndexManager {
 
     class IndexPage::iterator {
        public:
-        iterator(AttrType attr_type_, PageType page_type_, char *where_, const char *page_)
-            : attr_type(attr_type_), page_type(page_type_), where(where_), page(page_){};
+        value getValue() const {
+            value v;
+            if (page_type == LeafPage) {
+                RID r;
+                memcpy(&r, where + calcNextKeySize(), sizeof(RID));
+                v.rid = r;
+            } else {
+                page_pointer_t p;
+                memcpy(&p, where, sizeof(page_pointer_t));
+                v.pnum = p;
+            }
+            return v;
+        };
 
-        //Get Value
-        const char *get() const { return (page_type == InternalPage) ? where : where + calcNextKeySize(); };
-        //Get Key
-        const char *operator*() const { return (page_type == LeafPage) ? where : where + sizeof(page_pointer_t); };
+        key getKey() const {
+            char *key_start = (page_type == LeafPage) ? where : where + sizeof(page_pointer_t);
+            switch (attr_type) {
+                case AttrType::TypeInt: {
+                    unsigned i;
+                    memcpy(&i, key_start, sizeof(unsigned));
+                    return {.i = i};
+                }
+                case AttrType::TypeReal: {
+                    float r;
+                    memcpy(&r, key_start, sizeof(float));
+                    return {.r = r};
+                }
+                case AttrType::TypeVarChar: {
+                    unsigned len;
+                    memcpy(&len, key_start, sizeof(VARCHAR_LENGTH_SIZE));
+                    char *str = key_start + sizeof(VARCHAR_LENGTH_SIZE);
+                    return {.s = {str, len}};
+                }
+                default:
+                    return {.r = 0.0};
+            }
+        };
 
         bool operator==(const iterator &that) const { return this->where == that.where; }
         bool operator!=(const iterator &that) const { return this->where != that.where; }
@@ -128,6 +172,9 @@ class IndexManager {
         size_t getOffset() const { return where - page; }
 
        private:
+        iterator(AttrType attr_type_, PageType page_type_, size_t offset, char *page_)
+            : attr_type(attr_type_), page_type(page_type_), where(page_ + offset), page(page_){};
+
         friend class IndexPage;
         const AttrType attr_type;
         const PageType page_type;
