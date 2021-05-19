@@ -85,37 +85,40 @@ class IndexManager {
         static const uint32_t type_mask = 0x80000000;
 
         //Constructors
-        IndexPage(FileHandle &file, size_t page_num);                   //Read in page
-        IndexPage(PageType type, void *initial_data, size_t data_size,  //Create new page
+        IndexPage(FileHandle &file, size_t page_num);  //Read in page
+        IndexPage(PageType type, void *initial_data, size_t data_size, page_pointer_t parent_ = NULL_PAGE,
                   page_pointer_t next_ = NULL_PAGE, page_pointer_t prev_ = NULL_PAGE);
         ~IndexPage() { delete data; };
 
         //Iterator
-        iterator begin(AttrType attr_type);
-        iterator end(AttrType attr_type);
-        void insert(iterator &it, char *entry, size_t entry_size);  //Pointers can be null
+        iterator begin(AttrType attr_type) const;
+        iterator end(AttrType attr_type) const;
+        iterator find(AttrType attr_type, key &search_key) const;
+        void insert(iterator &it, key &k, value &v);
         RC erase(iterator &it);
+        IndexPage split(iterator &it);  //Split data after iterator into new page
 
         //Commit file to disk
         RC write(FileHandle &file, ssize_t page_num = -1) const;
-        //Split data after iterator into new page
-        IndexPage *split(iterator &it);
 
         PageType getType() const { return (*metadata & type_mask) ? LeafPage : InternalPage; }
         uint32_t getOffset() const { return *metadata & offset_mask; }
+        page_pointer_t getParentPage() const { return *parent; }
         page_pointer_t getNextPage() const { return *next; }
         page_pointer_t getPrevPage() const { return *prev; }
 
         RC setData(FileHandle &file, size_t page_num) { return file.readPage(page_num, data); };
+        void setParentPage(page_pointer_t parent_) { *parent = parent_; }
         void setNextPage(page_pointer_t n) { *next = n; }
         void setPrevPage(page_pointer_t p) { *prev = p; }
 
        private:
         void setupPointers();
-        void setOffset(uint32_t offset);
+        void setOffset(uint32_t offset) { *metadata |= (offset & offset_mask); }
 
         char *data;
         page_metadata_t *metadata;
+        page_pointer_t *parent = NULL;
 
         //Leaf pages only
         page_pointer_t *next = NULL;
@@ -124,43 +127,9 @@ class IndexManager {
 
     class IndexPage::iterator {
        public:
-        value getValue() const {
-            value v;
-            if (page_type == LeafPage) {
-                RID r;
-                memcpy(&r, where + calcNextKeySize(), sizeof(RID));
-                v.rid = r;
-            } else {
-                page_pointer_t p;
-                memcpy(&p, where, sizeof(page_pointer_t));
-                v.pnum = p;
-            }
-            return v;
-        };
-
-        key getKey() const {
-            char *key_start = (page_type == LeafPage) ? where : where + sizeof(page_pointer_t);
-            switch (attr_type) {
-                case AttrType::TypeInt: {
-                    unsigned i;
-                    memcpy(&i, key_start, sizeof(unsigned));
-                    return {.i = i};
-                }
-                case AttrType::TypeReal: {
-                    float r;
-                    memcpy(&r, key_start, sizeof(float));
-                    return {.r = r};
-                }
-                case AttrType::TypeVarChar: {
-                    unsigned len;
-                    memcpy(&len, key_start, sizeof(VARCHAR_LENGTH_SIZE));
-                    char *str = key_start + sizeof(VARCHAR_LENGTH_SIZE);
-                    return {.s = {str, len}};
-                }
-                default:
-                    return {.r = 0.0};
-            }
-        };
+        value getValue() const;
+        key getKey() const;
+        size_t getOffset() const { return where - page; }
 
         bool operator==(const iterator &that) const { return this->where == that.where; }
         bool operator!=(const iterator &that) const { return this->where != that.where; }
@@ -168,8 +137,6 @@ class IndexManager {
             where += calcNextEntrySize();
             return *this;
         };
-
-        size_t getOffset() const { return where - page; }
 
        private:
         iterator(AttrType attr_type_, PageType page_type_, size_t offset, char *page_)
@@ -181,25 +148,8 @@ class IndexManager {
         char *where;
         const char *page;
 
-        const size_t calcNextKeySize() const {
-            switch (attr_type) {
-                case AttrType::TypeInt:
-                    return INT_SIZE;
-                case AttrType::TypeReal:
-                    return REAL_SIZE;
-                case AttrType::TypeVarChar:
-                    void *varchar_length_start = (page_type == LeafPage) ? where : where + sizeof(page_pointer_t);
-                    unsigned varchar_length = 0;
-                    memcpy(&varchar_length, varchar_length_start, VARCHAR_LENGTH_SIZE);
-                    return VARCHAR_LENGTH_SIZE + varchar_length;
-            }
-            return 0;
-        };
-
-        const size_t calcNextEntrySize() const {
-            size_t data_size = (page_type == LeafPage) ? sizeof(RID) : sizeof(page_pointer_t);
-            return data_size + calcNextKeySize();
-        }
+        const size_t calcNextKeySize() const;
+        const size_t calcNextEntrySize() const;
     };
 
    protected:
