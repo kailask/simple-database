@@ -266,6 +266,8 @@ IndexManager::IndexPage::key IndexManager::IndexPage::iterator::getKey() const {
             char *str = where + VARCHAR_LENGTH_SIZE;
             return {.s = {str, len}};
         }
+        default:
+            return {.i = 0};
     }
 };
 

@@ -67,17 +67,16 @@ class IndexManager {
         class iterator;
 
         //Possible page values
-        union value {
+        struct value {
             RID rid;
             page_pointer_t pnum;
         };
 
         //Possible page keys
-        union key {
+        struct key {
             float r;
             unsigned i;
             string s;
-            ~key() {}
         };
 
         //Bitmasks for metadata
@@ -138,15 +137,15 @@ class IndexManager {
             return *this;
         };
 
-       private:
         iterator(AttrType attr_type_, PageType page_type_, size_t offset, char *page_)
             : attr_type(attr_type_), page_type(page_type_), where(page_ + offset), page(page_){};
 
+       private:
         friend class IndexPage;
-        const AttrType attr_type;
-        const PageType page_type;
+        AttrType attr_type;
+        PageType page_type;
         char *where;
-        const char *page;
+        char *page;
 
         const size_t calcNextKeySize() const;
         const size_t calcNextEntrySize() const;
