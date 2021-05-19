@@ -96,6 +96,7 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
 }
 
 //Helper functions
+//TODO: modify search based on IndexPage API changes
 IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileHandle &ixfileHandle) {
     //create indexPage object
     IndexPage temp(ixfileHandle.fileHandle, 0);
@@ -116,7 +117,7 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
                     int searchKeyInt;
                     memcpy(&searchKeyInt, *itor, INT_SIZE);
 
-                    if (targetKeyInt <= searchKeyInt) {
+                    if (targetKeyInt < searchKeyInt) {
                         matchFound = true;
                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
                         temp.setData(ixfileHandle.fileHandle, pageRef);
@@ -131,7 +132,7 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
                     float searchKeyFlt;
                     memcpy(&searchKeyFlt, *itor, REAL_SIZE);
 
-                    if (targetKeyFlt <= searchKeyFlt) {
+                    if (targetKeyFlt < searchKeyFlt) {
                         matchFound = true;
                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
                         temp.setData(ixfileHandle.fileHandle, pageRef);
@@ -152,7 +153,7 @@ IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileH
                     memcpy(&searchKey, static_cast<const char*>(*itor) + VARCHAR_LENGTH_SIZE, searchKeyLength);
                     searchKey[searchKeyLength] = '\0';
 
-                    if(strcmp(targetKey, searchKey) <= 0) {
+                    if(strcmp(targetKey, searchKey) < 0) {
                         matchFound = true;
                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
                         temp.setData(ixfileHandle.fileHandle, pageRef);
