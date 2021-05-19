@@ -304,7 +304,6 @@ IndexManager::IndexPage IndexManager::IndexPage::split(iterator &it) {
     return {getType(), it.where, removed_data};
 }
 
-//TODO: inc itor in find
 IndexManager::IndexPage::iterator IndexManager::IndexPage::find(AttrType attr_type, key &search_key) const {
     iterator it = begin(attr_type);
     while (it != end(attr_type)) {
@@ -319,6 +318,7 @@ IndexManager::IndexPage::iterator IndexManager::IndexPage::find(AttrType attr_ty
                 if (search_key.s.compare(it.getKey().s) >= 0) return it;
                 break;
         }
+        ++it;
     }
     return it;
 };
