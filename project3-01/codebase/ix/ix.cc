@@ -48,7 +48,25 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle) {
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-    return -1;
+    //get the page to insert key/entry record
+    IndexPage page = search(attribute.type, const_cast<void*>(key), ixfileHandle);
+
+    //create a key/value structs
+    IndexPage::key k = createKey(attribute.type, const_cast<void*>(key));
+    IndexPage::value v{.rid = rid};
+
+    //while there's not enough space for new insertion
+    PageType type = LeafPage;
+    while(getRecordSize(k, attribute.type, v, type) + page.getOffset() > PAGE_SIZE) {
+        //handle root case properly
+        if(page.getParentPage() == NULL_PAGE) {
+            //TODO: handle case when root page fills up
+        }
+    }
+
+    //once outside find the spot for insertion and insert
+    auto it = page.find(attribute.type, k);
+    page.insert(it, k, v);
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {
@@ -153,6 +171,25 @@ IndexManager::IndexPage IndexManager::search(AttrType attrType, void *key, IXFil
 
     //return the leaf page
     return temp;
+}
+
+ssize_t IndexManager::getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType) {
+    ssize_t keySize = 0;
+    switch (attrType) {
+        case AttrType::TypeInt:
+            keySize += INT_SIZE;
+            break;
+        case AttrType::TypeReal:
+            keySize += REAL_SIZE;
+            break;
+        case AttrType::TypeVarChar:
+            keySize += VARCHAR_LENGTH_SIZE;
+            keySize += k.s.length();
+            break;
+    }
+
+    size_t dataSize = (pageType == LeafPage) ? sizeof(RID) : sizeof(page_pointer_t);
+    return keySize + dataSize;
 }
 
 //IndexManager::IndexPage ==============================================================================

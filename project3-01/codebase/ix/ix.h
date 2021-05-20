@@ -160,6 +160,8 @@ class IndexManager {
     static PagedFileManager *pfm;
     IndexPage search(AttrType attrType, void *key, IXFileHandle &ixfileHandle);
     IndexPage::key createKey(AttrType attrType, void *key);
+    ssize_t getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType);
+    
 };
 
 class IX_ScanIterator {
