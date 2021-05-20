@@ -31,7 +31,7 @@ RC IndexManager::createFile(const string &fileName) {
     IndexPage root(InternalPage, &initial_pointer, sizeof(initial_pointer));
     if (root.write(file) != SUCCESS) return FAILURE;
 
-    IndexPage leaf(LeafPage, NULL, 0, 0);
+    IndexPage leaf(LeafPage, NULL, 0);
     if (leaf.write(file) != SUCCESS) return FAILURE;
 
     return SUCCESS;
@@ -61,9 +61,9 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     PageType type = LeafPage;
     while(getRecordSize(k, attribute.type, v, type) + page.getOffset() > PAGE_SIZE) {
         //handle root case properly
-        if(page.getParentPage() == NULL_PAGE) {
-            //TODO: handle case when root page fills up
-        }
+        // if(page.getParentPage() == NULL_PAGE) {
+        //     //TODO: handle case when root page fills up
+        // }
 
         //find the splitting point
         auto it = page.begin(attribute.type);
@@ -227,12 +227,12 @@ IndexManager::IndexPage::IndexPage(FileHandle &file, size_t page_num) {
 }
 
 IndexManager::IndexPage::IndexPage(PageType type, void *initial_data, size_t data_size,
-                                   page_pointer_t parent_, page_pointer_t next_, page_pointer_t prev_) {
+                                   page_pointer_t next_, page_pointer_t prev_) {
     setupPointers();
 
     //Set initial metadata
     uint32_t type_bit = 0b0;
-    uint32_t data_offset = sizeof(page_metadata_t) + sizeof(page_pointer_t);
+    uint32_t data_offset = sizeof(page_metadata_t);
     if (type == LeafPage) {
         type_bit = 0b1;
         data_offset += sizeof(page_pointer_t) * 2;  //Leaf pages have extra page pointers
@@ -242,7 +242,6 @@ IndexManager::IndexPage::IndexPage(PageType type, void *initial_data, size_t dat
 
     type_bit <<= (sizeof(page_metadata_t) * CHAR_BIT) - 1;
     *metadata = ((data_offset + data_size) & offset_mask) | (type_bit & type_mask);
-    *parent = parent_;
 
     //Copy initial data
     memcpy(data + data_offset, initial_data, data_size);
@@ -251,8 +250,7 @@ IndexManager::IndexPage::IndexPage(PageType type, void *initial_data, size_t dat
 void IndexManager::IndexPage::setupPointers() {
     data = static_cast<char *>(aligned_alloc(sizeof(page_metadata_t), PAGE_SIZE));
     metadata = reinterpret_cast<page_metadata_t *>(data);
-    parent = reinterpret_cast<page_pointer_t *>(metadata + sizeof(page_metadata_t));
-    prev = reinterpret_cast<page_pointer_t *>(parent + sizeof(page_metadata_t));
+    prev = reinterpret_cast<page_pointer_t *>(metadata + sizeof(page_metadata_t));
     next = reinterpret_cast<page_pointer_t *>(prev + sizeof(page_pointer_t));
 }
 

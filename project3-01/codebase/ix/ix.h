@@ -86,7 +86,7 @@ class IndexManager {
 
         //Constructors
         IndexPage(FileHandle &file, size_t page_num);  //Read in page
-        IndexPage(PageType type, void *initial_data, size_t data_size, page_pointer_t parent_ = NULL_PAGE,
+        IndexPage(PageType type, void *initial_data, size_t data_size,
                   page_pointer_t next_ = NULL_PAGE, page_pointer_t prev_ = NULL_PAGE);
         ~IndexPage() { delete data; };
 
@@ -103,12 +103,10 @@ class IndexManager {
 
         PageType getType() const { return (*metadata & type_mask) ? LeafPage : InternalPage; }
         uint32_t getOffset() const { return *metadata & offset_mask; }
-        page_pointer_t getParentPage() const { return *parent; }
         page_pointer_t getNextPage() const { return *next; }
         page_pointer_t getPrevPage() const { return *prev; }
 
         RC setData(FileHandle &file, size_t page_num) { return file.readPage(page_num, data); };
-        void setParentPage(page_pointer_t parent_) { *parent = parent_; }
         void setNextPage(page_pointer_t n) { *next = n; }
         void setPrevPage(page_pointer_t p) { *prev = p; }
 
@@ -118,7 +116,6 @@ class IndexManager {
 
         char *data;
         page_metadata_t *metadata;
-        page_pointer_t *parent = NULL;
 
         //Leaf pages only
         page_pointer_t *next = NULL;
