@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+//IndexManager  ========================================================================================
+
 IndexManager *IndexManager::_index_manager = 0;
 PagedFileManager *IndexManager::pfm = NULL;
 
@@ -67,6 +69,8 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     //once outside find the spot for insertion and insert
     auto it = page.find(attribute.type, k);
     page.insert(it, k, v);
+
+    return 0;
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {
@@ -86,6 +90,8 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
 void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const {
 }
 
+//ScanIterator ========================================================================================
+
 IX_ScanIterator::IX_ScanIterator() {
 }
 
@@ -99,6 +105,8 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
 RC IX_ScanIterator::close() {
     return -1;
 }
+
+//IXFileHandle =========================================================================================
 
 IXFileHandle::IXFileHandle() {
     ixReadPageCounter = 0;
