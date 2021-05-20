@@ -50,8 +50,12 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle) {
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-    //get the page to insert key/entry record
-    IndexPage page = search(attribute.type, const_cast<void*>(key), ixfileHandle);
+    //get the path taken to get page with key/entry record
+    vector<page_pointer_t> path = search(attribute.type, const_cast<void*>(key), ixfileHandle);
+    page_pointer_t currPageRef = path.back();
+    page_pointer_t appendPageRef = -1;
+    IndexPage page(ixfileHandle.fileHandle, currPageRef);
+    path.pop_back();
 
     //create key/value structs
     IndexPage::key k = createKey(attribute.type, const_cast<void*>(key));
@@ -61,9 +65,9 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     PageType type = LeafPage;
     while(getRecordSize(k, attribute.type, v, type) + page.getOffset() > PAGE_SIZE) {
         //handle root case properly
-        // if(page.getParentPage() == NULL_PAGE) {
-        //     //TODO: handle case when root page fills up
-        // }
+        if(currPageRef == 0) {
+            //TODO: handle case when root page fills up
+        }
 
         //find the splitting point
         auto it = page.begin(attribute.type);
@@ -73,8 +77,30 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             ++it;
         }
 
-        //split at iterator
+        //split at iterator and modify values for splitPage
         IndexPage splitPage = page.split(it);
+        if(splitPage.getType() == LeafPage) {
+            splitPage.setPrevPage(currPageRef);
+            splitPage.setNextPage(page.getNextPage());
+
+            //get the right page of currPage to modify its left reference and commit to disk
+            if(page.getNextPage() != NULL_PAGE) {
+                IndexPage rightLeaf(ixfileHandle.fileHandle, page.getNextPage());
+                rightLeaf.setPrevPage(ixfileHandle.fileHandle.getNumberOfPages());
+                rightLeaf.write(ixfileHandle.fileHandle, page.getNextPage());
+            }
+
+            //modify page's right ref 
+            page.setNextPage(ixfileHandle.fileHandle.getNumberOfPages());
+
+            //figure out which page the new key/value should be inserted at
+            auto leftEnd = page.end(attribute.type);
+            
+            auto rightStart = splitPage.begin(attribute.type);
+
+        }
+
+
 
         
 
@@ -164,14 +190,16 @@ IndexManager::IndexPage::key IndexManager::createKey(AttrType attrType, void *ke
     }
 }
 
-IndexManager::IndexPage IndexManager::search(AttrType attrType, void *key, IXFileHandle &ixfileHandle) {
+vector<page_pointer_t> IndexManager::search(AttrType attrType, void *key, IXFileHandle &ixfileHandle) {
     //create indexPage object
     IndexPage temp(ixfileHandle.fileHandle, 0);
+    vector<page_pointer_t> result;
 
     //parse the search key into a struct
     IndexPage::key k = createKey(attrType, key);
     
     //start at the root
+    result.push_back(0);
     while (temp.getType() != LeafPage) {
         IndexPage::iterator it = temp.find(attrType, k);
         /*
@@ -192,10 +220,11 @@ IndexManager::IndexPage IndexManager::search(AttrType attrType, void *key, IXFil
             }
         }
         temp.setData(ixfileHandle.fileHandle, it.getValue().pnum);
+        result.push_back(it.getValue().pnum);
     }
 
     //return the leaf page
-    return temp;
+    return result;
 }
 
 ssize_t IndexManager::getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType) {
@@ -263,7 +292,7 @@ IndexManager::IndexPage::iterator IndexManager::IndexPage::begin(AttrType attr_t
     PageType page_type = getType();
 
     //Iterator always points to start of key
-    size_t it_pos = sizeof(page_metadata_t) + sizeof(page_pointer_t);  //Data for all page types
+    size_t it_pos = sizeof(page_metadata_t); //Data for all page types
     if (page_type == LeafPage) {
         it_pos += sizeof(page_pointer_t) * 2;  //Leaf pages have extra page pointers
     } else {
