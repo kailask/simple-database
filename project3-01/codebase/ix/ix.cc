@@ -53,7 +53,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     //get the page to insert key/entry record
     IndexPage page = search(attribute.type, const_cast<void*>(key), ixfileHandle);
 
-    //create a key/value structs
+    //create key/value structs
     IndexPage::key k = createKey(attribute.type, const_cast<void*>(key));
     IndexPage::value v{.rid = rid};
 
@@ -64,13 +64,30 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         if(page.getParentPage() == NULL_PAGE) {
             //TODO: handle case when root page fills up
         }
+
+        //find the splitting point
+        auto it = page.begin(attribute.type);
+        uint32_t middle = ceil((page.getOffset() - it.getOffset()) / 2);
+        while(it != page.end(attribute.type)) {
+            if(it.getOffset() >= middle) break;
+            ++it;
+        }
+
+        //split at iterator
+        IndexPage splitPage = page.split(it);
+
+        
+
+
+
     }
 
-    //once outside find the spot for insertion and insert
+    //at while loop exit find the spot for insertion and insert
     auto it = page.find(attribute.type, k);
     page.insert(it, k, v);
 
-    return 0;
+    //write to disk
+    return page.write(ixfileHandle.fileHandle);
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {

@@ -4,6 +4,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include "../rbf/rbfm.h"
 
@@ -142,6 +143,7 @@ class IndexManager {
 
        private:
         friend class IndexPage;
+        //! thinking of adding ScanIterator as a friend class
         AttrType attr_type;
         PageType page_type;
         char *where;
@@ -161,7 +163,6 @@ class IndexManager {
     IndexPage search(AttrType attrType, void *key, IXFileHandle &ixfileHandle);
     IndexPage::key createKey(AttrType attrType, void *key);
     ssize_t getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType);
-    
 };
 
 class IX_ScanIterator {
