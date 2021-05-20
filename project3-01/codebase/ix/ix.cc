@@ -96,91 +96,64 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
 }
 
 //IndexManager helper functions ========================================================================
-
-//TODO: createKey() to create key struct and pass void pointer and attr
 //TODO: compareKey() to compare 2 structs
 
-// IndexManager::IndexPage IndexManager::search(Attribute &attr, void *key, IXFileHandle &ixfileHandle) {
-//     //create indexPage object
-//     IndexPage temp(ixfileHandle.fileHandle, 0);
+IndexManager::IndexPage::key IndexManager::createKey(AttrType attrType, void *key) {
+    switch (attrType) {
+        case AttrType::TypeInt: {
+            signed i;
+            memcpy(&i, key, INT_SIZE);
+            return {.i = i}; 
+        }
+        case AttrType::TypeReal: {
+            float r;
+            memcpy(&r, key, REAL_SIZE);
+            return {.r = r};
+        }
+        case AttrType::TypeVarChar: {
+            unsigned len;
+            memcpy(&len, key, VARCHAR_LENGTH_SIZE);
+            char *str = static_cast<char*>(key) + VARCHAR_LENGTH_SIZE;
+            return {.s = {str, len}};
+        }
+        default:
+            return {.i = 0};
+    }
+}
 
-//     //start at the root
-//     while (temp.getType() != LeafPage) {
-//         bool matchFound = false;
-//         page_pointer_t pageRef;
+IndexManager::IndexPage IndexManager::search(AttrType attrType, void *key, IXFileHandle &ixfileHandle) {
+    //create indexPage object
+    IndexPage temp(ixfileHandle.fileHandle, 0);
 
-//         //create an iterator and search
-//         IndexPage::iterator itor = temp.begin(attr.type);
-//         while (itor != temp.end(attr.type)) {
-//             switch (attr.type) {
-//                 case TypeInt: {
-//                     int targetKeyInt;
-//                     memcpy(&targetKeyInt, key, INT_SIZE);
+    //parse the search key into a struct
+    IndexPage::key k = createKey(attrType, key);
+    
+    //start at the root
+    while (temp.getType() != LeafPage) {
+        IndexPage::iterator it = temp.find(attrType, k);
+        /*
+            case 1: it = end, so no need to increment
+            case 2: it != end, so no need to increment unless search keys are equal
+        */
+        if(it != temp.end(attrType)) {
+            switch (attrType) {
+                case AttrType::TypeInt:
+                    if (it.getKey().i == k.i) ++it; 
+                    break;
+                case AttrType::TypeReal:
+                    if (it.getKey().r == k.r) ++it;
+                    break;
+                case AttrType::TypeVarChar:
+                    if (k.s == it.getKey().s) ++it;
+                    break;
+            }
+        }
+        temp.setData(ixfileHandle.fileHandle, it.getValue().pnum);
+    }
 
-//                     int searchKeyInt;
-//                     memcpy(&searchKeyInt, *itor, INT_SIZE);
-
-//                     if (targetKeyInt < searchKeyInt) {
-//                         matchFound = true;
-//                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-//                         temp.setData(ixfileHandle.fileHandle, pageRef);
-//                     }
-//                     break;
-//                 }
-
-//                 case TypeReal: {
-//                     float targetKeyFlt;
-//                     memcpy(&targetKeyFlt, key, REAL_SIZE);
-
-//                     float searchKeyFlt;
-//                     memcpy(&searchKeyFlt, *itor, REAL_SIZE);
-
-//                     if (targetKeyFlt < searchKeyFlt) {
-//                         matchFound = true;
-//                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-//                         temp.setData(ixfileHandle.fileHandle, pageRef);
-//                     }
-//                     break;
-//                 }
-
-//                 case TypeVarChar: {
-//                     unsigned targetKeyLength;
-//                     memcpy(&targetKeyLength, key, VARCHAR_LENGTH_SIZE);
-//                     char targetKey[targetKeyLength + 1];
-//                     memcpy(&targetKey, static_cast<char*>(key) + VARCHAR_LENGTH_SIZE, targetKeyLength);
-//                     targetKey[targetKeyLength] = '\0';
-
-//                     unsigned searchKeyLength;
-//                     memcpy(&searchKeyLength, *itor, VARCHAR_LENGTH_SIZE);
-//                     char searchKey[searchKeyLength + 1];
-//                     memcpy(&searchKey, static_cast<const char*>(*itor) + VARCHAR_LENGTH_SIZE, searchKeyLength);
-//                     searchKey[searchKeyLength] = '\0';
-
-//                     if(strcmp(targetKey, searchKey) < 0) {
-//                         matchFound = true;
-//                         memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-//                         temp.setData(ixfileHandle.fileHandle, pageRef);
-//                     }
-//                     break;
-//                 }
-//                 //TODO: Error not handled in the default case
-//             }
-
-//             //break from iterator loop if match found
-//             if (matchFound) break;
-//             ++itor;
-//         }
-
-//         //if match not found, call get() again to get the rightmost pageRef and set the Index page
-//         if(!matchFound) {
-//             memcpy(&pageRef, itor.get(), sizeof(page_pointer_t));
-//             temp.setData(ixfileHandle.fileHandle, pageRef);
-//         }
-//     }
-
-//     //return the leaf page
-//     return temp;
-// }
+    //return the leaf page
+    return temp;
+}
 
 //IndexManager::IndexPage ==============================================================================
 
@@ -315,7 +288,7 @@ IndexManager::IndexPage::iterator IndexManager::IndexPage::find(AttrType attr_ty
                 if (it.getKey().r >= search_key.r) return it;
                 break;
             case AttrType::TypeVarChar:
-                if (search_key.s.compare(it.getKey().s) >= 0) return it;
+                if (it.getKey().s.compare(search_key.s) >= 0) return it;
                 break;
         }
         ++it;

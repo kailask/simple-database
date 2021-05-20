@@ -158,7 +158,8 @@ class IndexManager {
    private:
     static IndexManager *_index_manager;
     static PagedFileManager *pfm;
-    IndexPage search(Attribute &attr, void *key, IXFileHandle &ixfileHandle);
+    IndexPage search(AttrType attrType, void *key, IXFileHandle &ixfileHandle);
+    IndexPage::key createKey(AttrType attrType, void *key);
 };
 
 class IX_ScanIterator {
