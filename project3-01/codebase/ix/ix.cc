@@ -50,25 +50,20 @@ RC IndexManager::closeFile(IXFileHandle &ixfileHandle) {
 }
 
 RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-    //get the path taken to get page with key/entry record
+    //get the path taken to get page with key/entry record and init helper variables
     vector<page_pointer_t> path = search(attribute.type, const_cast<void*>(key), ixfileHandle);
     page_pointer_t currPageRef = path.back();
-    page_pointer_t appendPageRef = -1;
-    IndexPage page(ixfileHandle.fileHandle, currPageRef);
+    page_pointer_t splitPageRef = ixfileHandle.fileHandle.getNumberOfPages();
     path.pop_back();
+    IndexPage page(ixfileHandle.fileHandle, currPageRef);
 
     //create key/value structs
     IndexPage::key k = createKey(attribute.type, const_cast<void*>(key));
-    IndexPage::value v{.rid = rid};
+    IndexPage::value v = {.rid = rid};
 
     //while there's not enough space for new insertion
     PageType type = LeafPage;
     while(getRecordSize(k, attribute.type, v, type) + page.getOffset() > PAGE_SIZE) {
-        //handle root case properly
-        if(currPageRef == 0) {
-            //TODO: handle case when root page fills up
-        }
-
         //find the splitting point
         auto it = page.begin(attribute.type);
         uint32_t middle = ceil((page.getOffset() - it.getOffset()) / 2);
@@ -79,6 +74,8 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 
         //split at iterator and modify values for splitPage
         IndexPage splitPage = page.split(it);
+
+        //adjust references in splitPage if leaf page
         if(splitPage.getType() == LeafPage) {
             splitPage.setPrevPage(currPageRef);
             splitPage.setNextPage(page.getNextPage());
@@ -86,26 +83,56 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             //get the right page of currPage to modify its left reference and commit to disk
             if(page.getNextPage() != NULL_PAGE) {
                 IndexPage rightLeaf(ixfileHandle.fileHandle, page.getNextPage());
-                rightLeaf.setPrevPage(ixfileHandle.fileHandle.getNumberOfPages());
-                rightLeaf.write(ixfileHandle.fileHandle, page.getNextPage());
+                rightLeaf.setPrevPage(splitPageRef);
+                if(rightLeaf.write(ixfileHandle.fileHandle, page.getNextPage()) != SUCCESS) return FAILURE;
             }
 
             //modify page's right ref 
-            page.setNextPage(ixfileHandle.fileHandle.getNumberOfPages());
-
-            //figure out which page the new key/value should be inserted at
-            auto leftEnd = page.end(attribute.type);
-            
-            auto rightStart = splitPage.begin(attribute.type);
-
+            page.setNextPage(splitPageRef);
         }
 
+        //figure out which page the new key/value should be inserted at
+        it = page.find(attribute.type, k);
+        if(it != page.end(attribute.type)) {
+            page.insert(it, k, v);
+        } else {
+            it = splitPage.find(attribute.type, k);
+            splitPage.insert(it, k, v);
+        }
 
-
+        //get the beginning of right page to update parent page
+        it = splitPage.begin(attribute.type);
+        k = it.getKey();
+        v = {.pnum = splitPageRef};
         
+        //erase the first entry in the splitPage if internal page
+        if(splitPage.getType() == InternalPage) {
+            splitPage.erase(it);
+        }
 
+        //if the page isn't root
+        if(currPageRef != 0) {
+            //commit pages to disk
+            if(page.write(ixfileHandle.fileHandle, currPageRef) != SUCCESS) return FAILURE;
+            if(splitPage.write(ixfileHandle.fileHandle) != SUCCESS) return FAILURE; //no pageRef assigned since it's being appended
 
+            //update variables
+            type = InternalPage;
+            currPageRef = path.back();
+            splitPageRef = ixfileHandle.fileHandle.getNumberOfPages();
+            path.pop_back();
+        } else {
+            //in this scenario a new root is created with left and right pageRefs referring to the old root and the split page
+            page_pointer_t initial_pointer = splitPageRef + 1;
+            IndexPage root(InternalPage, &initial_pointer, sizeof(initial_pointer));
+            it = root.begin(attribute.type);
+            root.insert(it, k, v);
 
+            //commit pages to disk
+            root.write(ixfileHandle.fileHandle, 0);
+            splitPage.write(ixfileHandle.fileHandle);
+            page.write(ixfileHandle.fileHandle);
+        }
     }
 
     //at while loop exit find the spot for insertion and insert
@@ -113,7 +140,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
     page.insert(it, k, v);
 
     //write to disk
-    return page.write(ixfileHandle.fileHandle);
+    return page.write(ixfileHandle.fileHandle, currPageRef);
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {

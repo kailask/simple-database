@@ -109,7 +109,6 @@ class IndexManager {
         RC setData(FileHandle &file, size_t page_num) { return file.readPage(page_num, data); };
         void setNextPage(page_pointer_t n) { *next = n; }
         void setPrevPage(page_pointer_t p) { *prev = p; }
-
        private:
         void setupPointers();
         void setOffset(uint32_t offset) { *metadata |= (offset & offset_mask); }
@@ -160,7 +159,6 @@ class IndexManager {
     vector<page_pointer_t> search(AttrType attrType, void *key, IXFileHandle &ixfileHandle);
     IndexPage::key createKey(AttrType attrType, void *key);
     ssize_t getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType);
-    
 };
 
 class IX_ScanIterator {
