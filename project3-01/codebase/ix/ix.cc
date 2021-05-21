@@ -129,9 +129,9 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             root.insert(it, k, v);
 
             //commit pages to disk
-            root.write(ixfileHandle.fileHandle, 0);
-            splitPage.write(ixfileHandle.fileHandle);
-            page.write(ixfileHandle.fileHandle);
+            if(root.write(ixfileHandle.fileHandle, 0) != SUCCESS) return FAILURE;
+            if(splitPage.write(ixfileHandle.fileHandle) != SUCCESS) return FAILURE;
+            return page.write(ixfileHandle.fileHandle);
         }
     }
 
