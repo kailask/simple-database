@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <iostream>
 
 #include "../rbf/rbfm.h"
 
@@ -159,6 +160,9 @@ class IndexManager {
     vector<page_pointer_t> search(AttrType attrType, void *key, IXFileHandle &ixfileHandle);
     IndexPage::key createKey(AttrType attrType, void *key);
     ssize_t getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType);
+    void printHelper(int numSpaces, IXFileHandle &ixfileHandle, AttrType attrType, page_pointer_t currPageNum) const;
+    bool areKeysEqual(IndexPage::key key1, IndexPage::key key2);
+    bool keyCompare(IndexPage::key key1, IndexPage::key key2);
 };
 
 class IX_ScanIterator {

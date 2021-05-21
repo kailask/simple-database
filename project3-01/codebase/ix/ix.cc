@@ -119,6 +119,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
             //update variables
             type = InternalPage;
             currPageRef = path.back();
+            page.setData(ixfileHandle.fileHandle, currPageRef);
             splitPageRef = ixfileHandle.fileHandle.getNumberOfPages();
             path.pop_back();
         } else {
@@ -158,6 +159,7 @@ RC IndexManager::scan(IXFileHandle &ixfileHandle,
 }
 
 void IndexManager::printBtree(IXFileHandle &ixfileHandle, const Attribute &attribute) const {
+    printHelper(0, ixfileHandle, attribute.type, 0);
 }
 
 //ScanIterator ========================================================================================
@@ -196,7 +198,13 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
 }
 
 //IndexManager helper functions ========================================================================
-//TODO: compareKey() to compare 2 structs
+bool IndexManager::areKeysEqual(IndexPage::key key1, IndexPage::key key2) {
+
+}
+
+bool IndexManager::keyCompare(IndexPage::key key1, IndexPage::key key2) {
+    
+}
 
 IndexManager::IndexPage::key IndexManager::createKey(AttrType attrType, void *key) {
     switch (attrType) {
@@ -275,6 +283,22 @@ ssize_t IndexManager::getRecordSize(IndexPage::key k, AttrType attrType, IndexPa
 
     size_t dataSize = (pageType == LeafPage) ? sizeof(RID) : sizeof(page_pointer_t);
     return keySize + dataSize;
+}
+
+void IndexManager::printHelper(int numSpaces, IXFileHandle &ixfileHandle, AttrType attrType, page_pointer_t currPageNum) const {
+    //read the page into IndexPage
+    IndexPage page(ixfileHandle.fileHandle, currPageNum);
+    std::cout << std::string(numSpaces, ' ') << "{\"keys:\"";
+
+    //base case
+    if(page.getType() == LeafPage) {
+        auto it = page.begin(attrType);
+        while(it != page.end(attrType)) {
+            auto key = it.getKey();
+            auto rid = it.getValue();
+        }
+
+    }
 }
 
 //IndexManager::IndexPage ==============================================================================
