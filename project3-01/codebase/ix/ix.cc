@@ -59,7 +59,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 
     //create key/value structs
     IndexPage::key k = createKey(attribute.type, const_cast<void*>(key));
-    IndexPage::value v = {.rid = rid};
+    IndexPage::value v{.rid = rid};
 
     //while there's not enough space for new insertion
     PageType type = LeafPage;
@@ -198,12 +198,34 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
 }
 
 //IndexManager helper functions ========================================================================
-bool IndexManager::areKeysEqual(IndexPage::key key1, IndexPage::key key2) {
-
+bool IndexManager::areKeysEqual(AttrType attrType, IndexPage::key key1, IndexPage::key key2) {
+    switch (attrType) {
+        case AttrType::TypeInt:
+            if (key1.i == key2.i) return true; 
+            break;
+        case AttrType::TypeReal:
+            if (key1.r == key2.r) return true;
+            break;
+        case AttrType::TypeVarChar:
+            if (key1.s == key2.s) return true;
+            break;
+    }
+    return false;
 }
 
-bool IndexManager::keyCompare(IndexPage::key key1, IndexPage::key key2) {
-    
+bool IndexManager::keyCompareLess(AttrType attrType, IndexPage::key key1, IndexPage::key key2) {
+    switch (attrType) {
+        case AttrType::TypeInt:
+            if (key1.i < key2.i) return true; 
+            break;
+        case AttrType::TypeReal:
+            if (key1.r < key2.r) return true;
+            break;
+        case AttrType::TypeVarChar:
+            if (key1.s.compare(key2.s) < 0) return true;
+            break;
+    }
+    return false;
 }
 
 IndexManager::IndexPage::key IndexManager::createKey(AttrType attrType, void *key) {
@@ -246,18 +268,9 @@ vector<page_pointer_t> IndexManager::search(AttrType attrType, void *key, IXFile
             case 2: it != end, so no need to increment unless search keys are equal
         */
         if(it != temp.end(attrType)) {
-            switch (attrType) {
-                case AttrType::TypeInt:
-                    if (it.getKey().i == k.i) ++it; 
-                    break;
-                case AttrType::TypeReal:
-                    if (it.getKey().r == k.r) ++it;
-                    break;
-                case AttrType::TypeVarChar:
-                    if (k.s == it.getKey().s) ++it;
-                    break;
-            }
+            if(areKeysEqual(attrType, it.getKey(), k)) ++it;
         }
+
         temp.setData(ixfileHandle.fileHandle, it.getValue().pnum);
         result.push_back(it.getValue().pnum);
     }
