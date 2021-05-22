@@ -198,7 +198,7 @@ RC IXFileHandle::collectCounterValues(unsigned &readPageCount, unsigned &writePa
 }
 
 //IndexManager helper functions ========================================================================
-bool IndexManager::areKeysEqual(AttrType attrType, IndexPage::key key1, IndexPage::key key2) {
+bool IndexManager::areKeysEqual(AttrType attrType, IndexPage::key key1, IndexPage::key key2) const {
     switch (attrType) {
         case AttrType::TypeInt:
             if (key1.i == key2.i) return true; 
@@ -226,6 +226,20 @@ bool IndexManager::keyCompareLess(AttrType attrType, IndexPage::key key1, IndexP
             break;
     }
     return false;
+}
+
+void IndexManager::printKey(AttrType attrType, IndexPage::key k) const {
+    switch (attrType) {
+        case AttrType::TypeInt:
+            cout << k.i;
+            break;
+        case AttrType::TypeReal:
+            cout << k.r;
+            break;
+        case AttrType::TypeVarChar:
+            cout << k.s;
+            break;
+    }
 }
 
 IndexManager::IndexPage::key IndexManager::createKey(AttrType attrType, void *key) {
@@ -301,17 +315,64 @@ ssize_t IndexManager::getRecordSize(IndexPage::key k, AttrType attrType, IndexPa
 void IndexManager::printHelper(int numSpaces, IXFileHandle &ixfileHandle, AttrType attrType, page_pointer_t currPageNum) const {
     //read the page into IndexPage
     IndexPage page(ixfileHandle.fileHandle, currPageNum);
-    std::cout << std::string(numSpaces, ' ') << "{\"keys:\"";
+    cout << string(numSpaces, ' ') << "{\"keys\":";
 
     //base case
     if(page.getType() == LeafPage) {
         auto it = page.begin(attrType);
+        auto prevKey = it.getKey();
+
+        cout << " [\"";
+        printKey(attrType, prevKey);
+        cout << ": [";
+
+        string comma = "";
         while(it != page.end(attrType)) {
             auto key = it.getKey();
-            auto rid = it.getValue();
+            auto val = it.getValue();
+
+            if(areKeysEqual(attrType, prevKey, key)) {
+                cout << comma << "(" << val.rid.pageNum << "," << val.rid.slotNum << ")";
+                comma = ", ";
+            } else {
+                cout << "]\",\"";
+                printKey(attrType, key);
+                cout << ":[" << "(" << val.rid.pageNum << "," << val.rid.slotNum << ")";
+            }
+            ++it;
         }
 
+        cout << "]\"]}," << endl;
+        return;
     }
+    
+    //recursive case
+    auto it = page.begin(attrType);
+    cout << "[";
+    string comma = "";
+    while(it != page.end(attrType)) {
+        auto key = it.getKey();
+        cout << comma << "\"";
+        printKey(attrType, key);
+        cout << "\"";
+        comma = ",";
+        ++it;
+    }
+
+    cout << "]," << endl;
+    cout << string(numSpaces, ' ') << " \"children\": [" << endl;
+
+    //depth first search through children
+    it = page.begin(attrType);
+    while(it != page.end(attrType)) {
+        printHelper(numSpaces + 4, ixfileHandle, attrType, it.getValue().pnum);
+        ++it;
+    }
+
+    //call once more for rightmost pageRef
+    printHelper(numSpaces + 4, ixfileHandle, attrType, it.getValue().pnum);
+
+    cout << string(numSpaces, ' ') << "]}," << endl;
 }
 
 //IndexManager::IndexPage ==============================================================================

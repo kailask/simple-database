@@ -161,8 +161,9 @@ class IndexManager {
     IndexPage::key createKey(AttrType attrType, void *key);
     ssize_t getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType);
     void printHelper(int numSpaces, IXFileHandle &ixfileHandle, AttrType attrType, page_pointer_t currPageNum) const;
-    bool areKeysEqual(AttrType attrType, IndexPage::key key1, IndexPage::key key2);
+    bool areKeysEqual(AttrType attrType, IndexPage::key key1, IndexPage::key key2) const;
     bool keyCompareLess(AttrType attrType, IndexPage::key key1, IndexPage::key key2);
+    void printKey(AttrType attrType, IndexPage::key k) const;
 };
 
 class IX_ScanIterator {
