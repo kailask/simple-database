@@ -112,7 +112,7 @@ class IndexManager {
         void setPrevPage(page_pointer_t p) { *prev = p; }
        private:
         void setupPointers();
-        void setOffset(uint32_t offset) { *metadata |= (offset & offset_mask); }
+        void setOffset(uint32_t offset) { *metadata = (offset & offset_mask) | (*metadata & type_mask); }
 
         char *data;
         page_metadata_t *metadata;

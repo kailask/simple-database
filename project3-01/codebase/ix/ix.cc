@@ -285,8 +285,8 @@ vector<page_pointer_t> IndexManager::search(AttrType attrType, void *key, IXFile
             if(areKeysEqual(attrType, it.getKey(), k)) ++it;
         }
 
-        temp.setData(ixfileHandle.fileHandle, it.getValue().pnum);
         result.push_back(it.getValue().pnum);
+        temp.setData(ixfileHandle.fileHandle, it.getValue().pnum);
     }
 
     //return the leaf page
@@ -462,11 +462,13 @@ void IndexManager::IndexPage::insert(iterator &it, key &k, value &v) {
             memmove(it.where + entry_size, it.where, bytes_to_move);
             memcpy(insert_pos, &k.i, INT_SIZE);
             insert_pos += INT_SIZE;
+            break;
         case AttrType::TypeReal:
             entry_size += REAL_SIZE;
             memmove(it.where + entry_size, it.where, bytes_to_move);
             memcpy(insert_pos, &k.r, REAL_SIZE);
             insert_pos += REAL_SIZE;
+            break;
         case AttrType::TypeVarChar:
             unsigned len = k.s.length();
             entry_size += VARCHAR_LENGTH_SIZE + len;
@@ -474,6 +476,7 @@ void IndexManager::IndexPage::insert(iterator &it, key &k, value &v) {
             memcpy(insert_pos, &len, VARCHAR_LENGTH_SIZE);
             memcpy(insert_pos + VARCHAR_LENGTH_SIZE, k.s.c_str(), len);
             insert_pos += VARCHAR_LENGTH_SIZE + len;
+            break;
     }
 
     if (it.page_type == LeafPage) {
