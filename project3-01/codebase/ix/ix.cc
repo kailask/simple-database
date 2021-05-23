@@ -193,26 +193,34 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         ++start;
         return SUCCESS;
     } else {
-        //you are at the last page
-        if(highKeyInclusive) {
-            if(keyCmpLessEqual(key_, im->createKey(attrType, const_cast<void*>(highKey)))) {
-                rid.pageNum = value.rid.pageNum;
-                rid.slotNum = value.rid.slotNum;
-                formatKey(key_, key);
-                ++start;
-                return SUCCESS;
-            } else {
-                return IX_EOF;
-            }
+        //if there is no highKey
+        if(highKey == nullptr) {
+            rid.pageNum = value.rid.pageNum;
+            rid.slotNum = value.rid.slotNum;
+            formatKey(key_, key);
+            ++start;
+            return SUCCESS;
         } else {
-            if(keyCmpLess(key_, im->createKey(attrType, const_cast<void*>(highKey)))) {
-                rid.pageNum = value.rid.pageNum;
-                rid.slotNum = value.rid.slotNum;
-                formatKey(key_, key);
-                ++start;
-                return SUCCESS;
+            if(highKeyInclusive) {
+                if(keyCmpLessEqual(key_, im->createKey(attrType, const_cast<void*>(highKey)))) {
+                    rid.pageNum = value.rid.pageNum;
+                    rid.slotNum = value.rid.slotNum;
+                    formatKey(key_, key);
+                    ++start;
+                    return SUCCESS;
+                } else {
+                    return IX_EOF;
+                }
             } else {
-                return IX_EOF;
+                if(keyCmpLess(key_, im->createKey(attrType, const_cast<void*>(highKey)))) {
+                    rid.pageNum = value.rid.pageNum;
+                    rid.slotNum = value.rid.slotNum;
+                    formatKey(key_, key);
+                    ++start;
+                    return SUCCESS;
+                } else {
+                    return IX_EOF;
+                }
             }
         }
     }
@@ -253,7 +261,7 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
         endPage = im->search(attrType, const_cast<void*>(highKey), ix).back();
     }
 
-    if(!lowKeyInclusive) {
+    if(lowKey != nullptr && !lowKeyInclusive) {
         auto currKey = start.getKey();
         while(start != temp.end(attrType) && im->areKeysEqual(attrType, currKey, im->createKey(attrType, const_cast<void*>(lowKey)))) {
             ++start;
