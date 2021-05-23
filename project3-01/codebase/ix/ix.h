@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "../rbf/rbfm.h"
 
@@ -105,7 +107,7 @@ class IndexManager {
 
         //Constructors
         IndexPage() {setupPointers();};
-        IndexPage(FileHandle &file, size_t page_num);  //Read in page
+        IndexPage(FileHandle &file, page_pointer_t page_num);  //Read in page
         IndexPage(PageType type, void *initial_data, size_t data_size,
                   page_pointer_t next_ = NULL_PAGE, page_pointer_t prev_ = NULL_PAGE);
         ~IndexPage() { delete data; };
@@ -176,6 +178,7 @@ class IndexManager {
 
    private:
     friend class IX_ScanIterator;
+    string fileName_;
     static IndexManager *_index_manager;
     static PagedFileManager *pfm;
     vector<page_pointer_t> search(AttrType attrType, void *key, IXFileHandle &ixfileHandle);

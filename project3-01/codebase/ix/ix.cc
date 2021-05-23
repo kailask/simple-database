@@ -34,11 +34,15 @@ RC IndexManager::createFile(const string &fileName) {
     IndexPage leaf(LeafPage, NULL, 0);
     if (leaf.write(file) != SUCCESS) return FAILURE;
 
+    fileName_ = fileName;
+
     return SUCCESS;
 }
 
 RC IndexManager::destroyFile(const string &fileName) {
-    return pfm->destroyFile(fileName);
+    if(pfm->destroyFile(fileName) != SUCCESS) return FAILURE;
+    fileName_ = fileName;
+    return SUCCESS;
 }
 
 RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle) {
@@ -145,7 +149,25 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
 }
 
 RC IndexManager::deleteEntry(IXFileHandle &ixfileHandle, const Attribute &attribute, const void *key, const RID &rid) {
-    return -1;
+    page_pointer_t deletePage = search(attribute.type, const_cast<void *>(key), ixfileHandle).back();
+    IndexPage temp{ixfileHandle.fileHandle, deletePage};
+    auto k = createKey(attribute.type, const_cast<void *>(key));
+    auto it = temp.find(attribute.type, k);
+
+    if(!areKeysEqual(attribute.type, k, it.getKey())) return FAILURE;
+
+    while(it != temp.end(attribute.type) && areKeysEqual(attribute.type, k, it.getKey())) {
+        //if rids are equal then delete
+        if(it.getValue().rid.pageNum == rid.pageNum && it.getValue().rid.slotNum == rid.slotNum) {
+            temp.erase(it);
+            temp.write(ixfileHandle.fileHandle, deletePage);
+            return SUCCESS;
+        }
+        ++it;
+    }
+
+    //key doesnt exist
+    return FAILURE;
 }
 
 RC IndexManager::scan(IXFileHandle &ixfileHandle,
@@ -174,8 +196,8 @@ IX_ScanIterator::~IX_ScanIterator() {
 
 RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     //adjust startPage, start iterator, and temp
-    if(start == temp.end(attrType)) {
-        if(startPage == endPage) {
+    if (start == temp.end(attrType)) {
+        if (startPage == endPage) {
             return IX_EOF;
         }
         startPage = temp.getNextPage();
@@ -186,7 +208,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
     auto key_ = start.getKey();
     auto value = start.getValue();
     //retrive entry as normal
-    if(startPage != endPage) {
+    if (startPage != endPage) {
         rid.pageNum = value.rid.pageNum;
         rid.slotNum = value.rid.slotNum;
         formatKey(key_, key);
@@ -194,15 +216,15 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
         return SUCCESS;
     } else {
         //if there is no highKey
-        if(highKey == nullptr) {
+        if (highKey == nullptr) {
             rid.pageNum = value.rid.pageNum;
             rid.slotNum = value.rid.slotNum;
             formatKey(key_, key);
             ++start;
             return SUCCESS;
         } else {
-            if(highKeyInclusive) {
-                if(keyCmpLessEqual(key_, im->createKey(attrType, const_cast<void*>(highKey)))) {
+            if (highKeyInclusive) {
+                if (keyCmpLessEqual(key_, im->createKey(attrType, const_cast<void *>(highKey)))) {
                     rid.pageNum = value.rid.pageNum;
                     rid.slotNum = value.rid.slotNum;
                     formatKey(key_, key);
@@ -212,7 +234,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
                     return IX_EOF;
                 }
             } else {
-                if(keyCmpLess(key_, im->createKey(attrType, const_cast<void*>(highKey)))) {
+                if (keyCmpLess(key_, im->createKey(attrType, const_cast<void *>(highKey)))) {
                     rid.pageNum = value.rid.pageNum;
                     rid.slotNum = value.rid.slotNum;
                     formatKey(key_, key);
@@ -229,16 +251,22 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
 }
 
 RC IX_ScanIterator::close() {
-    return -1;
+    return SUCCESS;
 }
 
 RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
-        const AttrType &attrType_,
-        const void *lowKey_,
-        const void *highKey_,
-        bool lowKeyInclusive_,
-        bool highKeyInclusive_) {
+                             const AttrType &attrType_,
+                             const void *lowKey_,
+                             const void *highKey_,
+                             bool lowKeyInclusive_,
+                             bool highKeyInclusive_) {
+    //TODO: scan needs to check if fileHandle is valid or not
+    // If the file doesn't exist, error
+    struct stat sb;
+    if(stat(im->fileName_.c_str(), &sb) != 0) return PFM_FILE_DN_EXIST;
+
     //set all the private variables
+    //! how do I store the reference passed in?
     ix = ixfileHandle_;
     attrType = attrType_;
     lowKey = lowKey_;
@@ -247,25 +275,25 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
     highKeyInclusive = highKeyInclusive_;
 
     //set the initial state
-    if(lowKey == nullptr) {
+    if (lowKey == nullptr) {
         startPage = getLeftPage();
     } else {
-        startPage = im->search(attrType, const_cast<void*>(lowKey), ix).back();
+        startPage = im->search(attrType, const_cast<void *>(lowKey), ix).back();
     }
-    temp.setData(ix.fileHandle, startPage);
+    temp.setData(ixfileHandle_.fileHandle, startPage);  //! change this back to the proper handle
     start = temp.begin(attrType);
 
-    if(highKey == nullptr) {
+    if (highKey == nullptr) {
         endPage = getRightPage();
     } else {
-        endPage = im->search(attrType, const_cast<void*>(highKey), ix).back();
+        endPage = im->search(attrType, const_cast<void *>(highKey), ix).back();
     }
 
-    if(lowKey != nullptr && !lowKeyInclusive) {
+    if (lowKey != nullptr && !lowKeyInclusive) {
         auto currKey = start.getKey();
-        while(start != temp.end(attrType) && im->areKeysEqual(attrType, currKey, im->createKey(attrType, const_cast<void*>(lowKey)))) {
+        while (start != temp.end(attrType) && im->areKeysEqual(attrType, currKey, im->createKey(attrType, const_cast<void *>(lowKey)))) {
             ++start;
-        } 
+        }
     }
 
     return SUCCESS;
@@ -274,7 +302,7 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
 page_pointer_t IX_ScanIterator::getLeftPage() {
     IndexManager::IndexPage temp(ix.fileHandle, 0);
     page_pointer_t left = 0;
-    while(temp.getType() != LeafPage) {
+    while (temp.getType() != LeafPage) {
         auto it = temp.begin(attrType);
         left = it.getValue().pnum;
         temp.setData(ix.fileHandle, left);
@@ -285,7 +313,7 @@ page_pointer_t IX_ScanIterator::getLeftPage() {
 page_pointer_t IX_ScanIterator::getRightPage() {
     IndexManager::IndexPage temp(ix.fileHandle, 0);
     page_pointer_t right = 0;
-    while(temp.getType() != LeafPage) {
+    while (temp.getType() != LeafPage) {
         auto it = temp.end(attrType);
         right = it.getValue().pnum;
         temp.setData(ix.fileHandle, right);
@@ -293,7 +321,7 @@ page_pointer_t IX_ScanIterator::getRightPage() {
     return right;
 }
 
-void IX_ScanIterator::formatKey(IndexManager::IndexPage::key k, void* dest) {
+void IX_ScanIterator::formatKey(IndexManager::IndexPage::key k, void *dest) {
     switch (attrType) {
         case AttrType::TypeInt:
             memcpy(dest, &k.i, INT_SIZE);
@@ -304,7 +332,7 @@ void IX_ScanIterator::formatKey(IndexManager::IndexPage::key k, void* dest) {
         case AttrType::TypeVarChar:
             int length = k.s.length();
             memcpy(dest, &length, VARCHAR_LENGTH_SIZE);
-            memcpy(static_cast<char*>(dest) + VARCHAR_LENGTH_SIZE, k.s.c_str(), length);
+            memcpy(static_cast<char *>(dest) + VARCHAR_LENGTH_SIZE, k.s.c_str(), length);
             break;
     }
 }
@@ -525,7 +553,7 @@ void IndexManager::printHelper(int numSpaces, IXFileHandle &ixfileHandle, AttrTy
 
 //IndexManager::IndexPage ==============================================================================
 
-IndexManager::IndexPage::IndexPage(FileHandle &file, size_t page_num) {
+IndexManager::IndexPage::IndexPage(FileHandle &file, page_pointer_t page_num) {
     setupPointers();
 
     //Error not handled

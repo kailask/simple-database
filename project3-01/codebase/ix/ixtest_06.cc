@@ -45,6 +45,10 @@ int testCase_6(const string &indexFileName, const Attribute &attribute)
         rid.slotNum = key * 3;
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
+        
+        //! make sure to remove
+        indexManager->printBtree(ixfileHandle, attribute);
+
         assert(rc == success && "indexManager::insertEntry() should not fail.");
 
         inRidSlotNumSum += rid.slotNum;
