@@ -109,7 +109,7 @@ RC IndexManager::insertEntry(IXFileHandle &ixfileHandle, const Attribute &attrib
         //get the beginning of right page to update parent page
         it = splitPage.begin(attribute.type);
         k = it.getKey();
-        v = {.pnum = splitPageRef};
+        v = IndexPage::value{.pnum = splitPageRef};
 
         //erase the first entry in the splitPage if internal page
         if (splitPage.getType() == InternalPage) {
@@ -433,7 +433,7 @@ IndexManager::IndexPage::key IndexManager::createKey(AttrType attrType, void *ke
             unsigned len;
             memcpy(&len, key, VARCHAR_LENGTH_SIZE);
             char *str = static_cast<char *>(key) + VARCHAR_LENGTH_SIZE;
-            return {.s = {str, len}};
+            return IndexPage::key{.s = {str, len}};
         }
         default:
             return {.i = 0};
@@ -704,7 +704,7 @@ IndexManager::IndexPage::value IndexManager::IndexPage::iterator::getValue() con
     } else {
         page_pointer_t p;  //In internal pages value is before key
         memcpy(&p, where - sizeof(page_pointer_t), sizeof(page_pointer_t));
-        return {.pnum = p};
+        return IndexPage::value{.pnum = p};
     }
 };
 
@@ -724,7 +724,7 @@ IndexManager::IndexPage::key IndexManager::IndexPage::iterator::getKey() const {
             unsigned len;
             memcpy(&len, where, VARCHAR_LENGTH_SIZE);
             char *str = where + VARCHAR_LENGTH_SIZE;
-            return {.s = {str, len}};
+            return IndexPage::key{.s = {str, len}};
         }
         default:
             return {.i = 0};
