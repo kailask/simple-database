@@ -1,11 +1,11 @@
 #ifndef _ix_h_
 #define _ix_h_
 
+#include <cmath>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <cmath>
-#include <iostream>
 
 #include "../rbf/rbfm.h"
 
@@ -28,6 +28,24 @@ enum PageType {
 
 class IX_ScanIterator;
 class IXFileHandle;
+
+class IXFileHandle {
+   public:
+    // variables to keep counter for each operation
+    unsigned ixReadPageCounter;
+    unsigned ixWritePageCounter;
+    unsigned ixAppendPageCounter;
+    FileHandle fileHandle;
+
+    // Constructor
+    IXFileHandle();
+
+    // Destructor
+    ~IXFileHandle();
+
+    // Put the current counter values of associated PF FileHandles into variables
+    RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount);
+};
 
 class IndexManager {
    public:
@@ -77,7 +95,7 @@ class IndexManager {
         //Possible page keys
         struct key {
             float r;
-            signed i; 
+            signed i;
             string s;
         };
 
@@ -86,6 +104,7 @@ class IndexManager {
         static const uint32_t type_mask = 0x80000000;
 
         //Constructors
+        IndexPage() {};
         IndexPage(FileHandle &file, size_t page_num);  //Read in page
         IndexPage(PageType type, void *initial_data, size_t data_size,
                   page_pointer_t next_ = NULL_PAGE, page_pointer_t prev_ = NULL_PAGE);
@@ -110,6 +129,7 @@ class IndexManager {
         RC setData(FileHandle &file, size_t page_num) { return file.readPage(page_num, data); };
         void setNextPage(page_pointer_t n) { *next = n; }
         void setPrevPage(page_pointer_t p) { *prev = p; }
+
        private:
         void setupPointers();
         void setOffset(uint32_t offset) { *metadata = (offset & offset_mask) | (*metadata & type_mask); }
@@ -135,6 +155,7 @@ class IndexManager {
             return *this;
         };
 
+        iterator() {};
         iterator(AttrType attr_type_, PageType page_type_, size_t offset, char *page_)
             : attr_type(attr_type_), page_type(page_type_), where(page_ + offset), page(page_){};
 
@@ -154,7 +175,7 @@ class IndexManager {
     ~IndexManager();
 
    private:
-    //TODO: add IX_ScanIterator as a friend
+    friend class IX_ScanIterator;
     static IndexManager *_index_manager;
     static PagedFileManager *pfm;
     vector<page_pointer_t> search(AttrType attrType, void *key, IXFileHandle &ixfileHandle);
@@ -162,7 +183,6 @@ class IndexManager {
     ssize_t getRecordSize(IndexPage::key k, AttrType attrType, IndexPage::value v, PageType pageType);
     void printHelper(int numSpaces, IXFileHandle &ixfileHandle, AttrType attrType, page_pointer_t currPageNum) const;
     bool areKeysEqual(AttrType attrType, IndexPage::key key1, IndexPage::key key2) const;
-    bool keyCompareLess(AttrType attrType, IndexPage::key key1, IndexPage::key key2);
     void printKey(AttrType attrType, IndexPage::key k) const;
 };
 
@@ -179,24 +199,31 @@ class IX_ScanIterator {
 
     // Terminate index scan
     RC close();
-};
 
-class IXFileHandle {
-   public:
-    // variables to keep counter for each operation
-    unsigned ixReadPageCounter;
-    unsigned ixWritePageCounter;
-    unsigned ixAppendPageCounter;
-    FileHandle fileHandle;
-
-    // Constructor
-    IXFileHandle();
-
-    // Destructor
-    ~IXFileHandle();
-
-    // Put the current counter values of associated PF FileHandles into variables
-    RC collectCounterValues(unsigned &readPageCount, unsigned &writePageCount, unsigned &appendPageCount);
+   private:
+    IndexManager *im;
+    friend class IndexManager;
+    IXFileHandle ix;
+    AttrType attrType;
+    const void* lowKey;
+    const void* highKey;
+    bool lowKeyInclusive;
+    bool highKeyInclusive;
+    IndexManager::IndexPage temp;
+    page_pointer_t startPage;
+    page_pointer_t endPage;
+    IndexManager::IndexPage::iterator start;
+    page_pointer_t getLeftPage();
+    page_pointer_t getRightPage();
+    RC scanInit(IXFileHandle &ixfileHandle_,
+            const AttrType &attrType_,
+            const void *lowKey_,
+            const void *highKey_,
+            bool lowKeyInclusive_,
+            bool highKeyInclusive_);
+    void formatKey(IndexManager::IndexPage::key k, void* dest);
+    bool keyCmpLess(IndexManager::IndexPage::key key1, IndexManager::IndexPage::key key2);
+    bool keyCmpLessEqual(IndexManager::IndexPage::key key1, IndexManager::IndexPage::key key2);
 };
 
 #endif
