@@ -206,7 +206,7 @@ class IX_ScanIterator {
    private:
     IndexManager *im;
     friend class IndexManager;
-    IXFileHandle ix;
+    IXFileHandle *ix;
     AttrType attrType;
     const void* lowKey;
     const void* highKey;

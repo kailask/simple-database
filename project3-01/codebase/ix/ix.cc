@@ -46,7 +46,9 @@ RC IndexManager::destroyFile(const string &fileName) {
 }
 
 RC IndexManager::openFile(const string &fileName, IXFileHandle &ixfileHandle) {
-    return pfm->openFile(fileName, ixfileHandle.fileHandle);
+    if(pfm->openFile(fileName, ixfileHandle.fileHandle) != SUCCESS) return FAILURE;
+    fileName_ = fileName;
+    return SUCCESS;
 }
 
 RC IndexManager::closeFile(IXFileHandle &ixfileHandle) {
@@ -201,7 +203,7 @@ RC IX_ScanIterator::getNextEntry(RID &rid, void *key) {
             return IX_EOF;
         }
         startPage = temp.getNextPage();
-        temp.setData(ix.fileHandle, startPage);
+        temp.setData(ix->fileHandle, startPage);
         start = temp.begin(attrType);
     }
 
@@ -260,14 +262,13 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
                              const void *highKey_,
                              bool lowKeyInclusive_,
                              bool highKeyInclusive_) {
-    //TODO: scan needs to check if fileHandle is valid or not
     // If the file doesn't exist, error
     struct stat sb;
+    cout << im->fileName_ << endl;
     if(stat(im->fileName_.c_str(), &sb) != 0) return PFM_FILE_DN_EXIST;
 
     //set all the private variables
-    //! how do I store the reference passed in?
-    ix = ixfileHandle_;
+    ix = &ixfileHandle_;
     attrType = attrType_;
     lowKey = lowKey_;
     highKey = highKey_;
@@ -278,15 +279,15 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
     if (lowKey == nullptr) {
         startPage = getLeftPage();
     } else {
-        startPage = im->search(attrType, const_cast<void *>(lowKey), ix).back();
+        startPage = im->search(attrType, const_cast<void *>(lowKey), *ix).back();
     }
-    temp.setData(ixfileHandle_.fileHandle, startPage);  //! change this back to the proper handle
+    temp.setData(ix->fileHandle, startPage);
     start = temp.begin(attrType);
 
     if (highKey == nullptr) {
         endPage = getRightPage();
     } else {
-        endPage = im->search(attrType, const_cast<void *>(highKey), ix).back();
+        endPage = im->search(attrType, const_cast<void *>(highKey), *ix).back();
     }
 
     if (lowKey != nullptr && !lowKeyInclusive) {
@@ -300,23 +301,23 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
 }
 
 page_pointer_t IX_ScanIterator::getLeftPage() {
-    IndexManager::IndexPage temp(ix.fileHandle, 0);
+    IndexManager::IndexPage temp(ix->fileHandle, 0);
     page_pointer_t left = 0;
     while (temp.getType() != LeafPage) {
         auto it = temp.begin(attrType);
         left = it.getValue().pnum;
-        temp.setData(ix.fileHandle, left);
+        temp.setData(ix->fileHandle, left);
     }
     return left;
 }
 
 page_pointer_t IX_ScanIterator::getRightPage() {
-    IndexManager::IndexPage temp(ix.fileHandle, 0);
+    IndexManager::IndexPage temp(ix->fileHandle, 0);
     page_pointer_t right = 0;
     while (temp.getType() != LeafPage) {
         auto it = temp.end(attrType);
         right = it.getValue().pnum;
-        temp.setData(ix.fileHandle, right);
+        temp.setData(ix->fileHandle, right);
     }
     return right;
 }
