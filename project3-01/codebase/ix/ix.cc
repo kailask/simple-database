@@ -31,7 +31,7 @@ RC IndexManager::createFile(const string &fileName) {
     IndexPage root(InternalPage, &initial_pointer, sizeof(initial_pointer));
     if (root.write(file) != SUCCESS) return FAILURE;
 
-    IndexPage leaf(LeafPage, NULL, 0, NULL_PAGE, NULL_PAGE);
+    IndexPage leaf(LeafPage, NULL, 0);
     if (leaf.write(file) != SUCCESS) return FAILURE;
 
     fileName_ = fileName;
@@ -585,8 +585,8 @@ IndexManager::IndexPage::IndexPage(PageType type, void *initial_data, size_t dat
 void IndexManager::IndexPage::setupPointers() {
     data = static_cast<char *>(aligned_alloc(sizeof(page_metadata_t), PAGE_SIZE));
     metadata = reinterpret_cast<page_metadata_t *>(data);
-    prev = reinterpret_cast<page_pointer_t *>(metadata + sizeof(page_metadata_t));
-    next = reinterpret_cast<page_pointer_t *>(prev + sizeof(page_pointer_t));
+    prev = reinterpret_cast<page_pointer_t *>(metadata + 1);
+    next = reinterpret_cast<page_pointer_t *>(prev + 1);
 }
 
 RC IndexManager::IndexPage::write(FileHandle &file, ssize_t page_num) const {

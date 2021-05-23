@@ -44,21 +44,7 @@ int testCase_6(const string &indexFileName, const Attribute &attribute)
         rid.pageNum = key;
         rid.slotNum = key * 3;
 
-        //! make sure to remove
-        if(i == 0) {
-            cout << "break here" << endl;
-        }
-
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
-        
-        //! make sure to remove
-        if(i >= 339) {
-            indexManager->printBtree(ixfileHandle, attribute);
-        }
-
-        if(i == 0) {
-            indexManager->printBtree(ixfileHandle, attribute);
-        }
 
         assert(rc == success && "indexManager::insertEntry() should not fail.");
 
