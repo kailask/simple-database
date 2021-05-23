@@ -140,8 +140,8 @@ class IndexManager {
         page_metadata_t *metadata;
 
         //Leaf pages only
-        page_pointer_t *next = NULL;
-        page_pointer_t *prev = NULL;
+        page_pointer_t *next; //! page turns into 3 for some reason
+        page_pointer_t *prev;
     };
 
     class IndexPage::iterator {

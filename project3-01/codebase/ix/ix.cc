@@ -31,7 +31,7 @@ RC IndexManager::createFile(const string &fileName) {
     IndexPage root(InternalPage, &initial_pointer, sizeof(initial_pointer));
     if (root.write(file) != SUCCESS) return FAILURE;
 
-    IndexPage leaf(LeafPage, NULL, 0);
+    IndexPage leaf(LeafPage, NULL, 0, NULL_PAGE, NULL_PAGE);
     if (leaf.write(file) != SUCCESS) return FAILURE;
 
     fileName_ = fileName;
