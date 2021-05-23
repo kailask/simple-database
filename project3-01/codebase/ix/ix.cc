@@ -264,7 +264,6 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
                              bool highKeyInclusive_) {
     // If the file doesn't exist, error
     struct stat sb;
-    cout << im->fileName_ << endl;
     if(stat(im->fileName_.c_str(), &sb) != 0) return PFM_FILE_DN_EXIST;
 
     //set all the private variables
@@ -276,13 +275,18 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
     highKeyInclusive = highKeyInclusive_;
 
     //set the initial state
+    IndexManager::IndexPage::key k;
     if (lowKey == nullptr) {
         startPage = getLeftPage();
+        temp.setData(ix->fileHandle, startPage);
+        start = temp.begin(attrType);
     } else {
         startPage = im->search(attrType, const_cast<void *>(lowKey), *ix).back();
+        temp.setData(ix->fileHandle, startPage);
+        k = im->createKey(attrType, const_cast<void *>(lowKey));
+        start = temp.find(attrType, k);
     }
-    temp.setData(ix->fileHandle, startPage);
-    start = temp.begin(attrType);
+
 
     if (highKey == nullptr) {
         endPage = getRightPage();
@@ -292,7 +296,7 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
 
     if (lowKey != nullptr && !lowKeyInclusive) {
         auto currKey = start.getKey();
-        while (start != temp.end(attrType) && im->areKeysEqual(attrType, currKey, im->createKey(attrType, const_cast<void *>(lowKey)))) {
+        while (start != temp.end(attrType) && im->areKeysEqual(attrType, currKey, k)) {
             ++start;
         }
     }
