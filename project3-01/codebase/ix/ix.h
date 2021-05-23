@@ -104,7 +104,7 @@ class IndexManager {
         static const uint32_t type_mask = 0x80000000;
 
         //Constructors
-        IndexPage() {};
+        IndexPage() {setupPointers();};
         IndexPage(FileHandle &file, size_t page_num);  //Read in page
         IndexPage(PageType type, void *initial_data, size_t data_size,
                   page_pointer_t next_ = NULL_PAGE, page_pointer_t prev_ = NULL_PAGE);

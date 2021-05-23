@@ -252,7 +252,7 @@ RC IX_ScanIterator::scanInit(IXFileHandle &ixfileHandle_,
     } else {
         startPage = im->search(attrType, const_cast<void*>(lowKey), ix).back();
     }
-    temp = IndexManager::IndexPage(ix.fileHandle, startPage);
+    temp.setData(ix.fileHandle, startPage);
     start = temp.begin(attrType);
 
     if(highKey == nullptr) {
