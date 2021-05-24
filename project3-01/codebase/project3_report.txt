@@ -1,28 +1,38 @@
 1. Basic information
-Team number (e.g., 01) : 
-#1 Student ID : 
-#1 Student Name : 
-#2 Student ID : 
-#2 Student Name : 
+Team number (e.g., 01) : 1
+#1 Student ID : ssuresh3
+#1 Student Name : Surya Suresh
+#2 Student ID : kkrivank
+#2 Student Name : Kailas Krivanka
 
 2. Meta-data page in an index file
 - Show your meta-data page of an index design, if you have any. 
+Our meta-data was simple, only including 4 bytes of data to represent both page type and page offset.
 
 
 3. Index Entry Format
 - Show your design for index entries (data structure). 
+Our index entries followed a key and value format where key represented the search key of the index and value represented either the RID if the page was a leaf page or a pageRef if the page was an internal page.
 
 
 4. Page Format
 - Show your internal-page (non-leaf node) design.
+The internal page design consisted of the meta-data mentioned above and an additional pageRef to represent the leftmost page in the index.
 
 - Show your leaf-page (leaf node) design.
+The leaf page design consisted of the meta-data mentioned above and 2 addtional pageRefs to represent the left and right pages for a given leaf page.
 
 
 5. Implementation Detail
 - Have you implemented non-lazy deletion? Choose Yes or No: Also provide implementation details if yes.
+No
 
 - Provide other implementation details, including how you handle insertions (including splits), and how you handle deletion (if you used lazy deletion).
+Insertions were handled by first finding a path of pageRefs leading to the leaf page. Once we created the path, we inserted into the leaf page and backtracked through the path in case the leaf page filled up. If we found the leaf page did not have enough space we split the page in half and inserted the data entry into the respective page. Traffic cops were found by taking the middle value of the right page and were propogated to the internal pages. For internal pages, split was a little tricky as we had duplicate pageRefs in each of the pages. THe trick we did to resolve this was to later delete the key,value entry in the right page so that the duplicate pageRef as well as the new traffic cop were removed. 
+
+Deletions were very simple as a simple search was called to get the page containing the to-be deleted entry. After that a simple find call to return the iterator of where the deleted key would be was needed to remove the key if it were there.
+
+Another neat implementation detail we came up with was to create helper page classes and iterators to abstract the bit fiddling and page I/Os away from the higher level functions. We saved a lot of time avoiding the need to duplicate logic such as memcopying and searching through a page. 
 
 
 6. Other (optional)
