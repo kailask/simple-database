@@ -8,8 +8,8 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
     cout << endl << "***** In RM Test case 10 *****" << endl;
 
     int numTuples = 2000;
-    void *tuple = malloc(2000);
-    void *returnedData = malloc(2000);
+    void *tuple = malloc(4000);
+    void *returnedData = malloc(4000);
     
     readRIDsFromDisk(rids, numTuples);
     readSizesFromDisk(sizes, numTuples);
@@ -27,7 +27,7 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
     int size = 0;
     for(int i = 0; i < 1000; i++)
     {
-        memset(tuple, 0, 2000);
+        memset(tuple, 0, 4000);
         RID rid = rids[i];
 
         prepareLargeTuple(attrs.size(), nullsIndicator, i+10, tuple, &size);
@@ -41,8 +41,8 @@ RC TEST_RM_10(const string &tableName, vector<RID> &rids, vector<int> &sizes)
     // Read the updated records and check the integrity
     for(int i = 0; i < 1000; i++)
     {
-        memset(tuple, 0, 2000);
-        memset(returnedData, 0, 2000);
+        memset(tuple, 0, 4000);
+        memset(returnedData, 0, 4000);
         prepareLargeTuple(attrs.size(), nullsIndicator, i+10, tuple, &size);
         rc = rm->readTuple(tableName, rids[i], returnedData);
         assert(rc == success && "RelationManager::readTuple() should not fail.");

@@ -13,12 +13,12 @@ int testCase_12(const string &indexFileName, const Attribute &attribute)
 {
     // Checks whether deleting an entry after getNextEntry() in a scan is handled properly or not.
     //    An example:
-	//    IX_ScanIterator ix_ScanIterator;
-	//    indexManager->scan(ixfileHandle, ..., ix_ScanIterator);
-	//    while ((rc = ix_ScanIterator.getNextEntry(rid, &key)) != IX_EOF)
-	//    {
-	//       indexManager->deleteEntry(ixfileHandle, attribute, &key, rid);
-	//    }
+    //    IX_ScanIterator ix_ScanIterator;
+    //    indexManager->scan(ixfileHandle, ..., ix_ScanIterator);
+    //    while ((rc = ix_ScanIterator.getNextEntry(rid, &key)) != IX_EOF)
+    //    {
+    //       indexManager->deleteEntry(ixfileHandle, attribute, &key, rid);
+    //    }
 
     // Functions tested
     // 1. Create Index File
@@ -29,13 +29,13 @@ int testCase_12(const string &indexFileName, const Attribute &attribute)
     // 6. CloseIndex File
     // 7. DestroyIndex File
     // NOTE: "**" signifies the new functions being tested in this test case.
-	cerr << endl << "***** In IX Test Case 12 *****" << endl;
+    cerr << endl << "***** In IX Test Case 12 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
     IX_ScanIterator ix_ScanIterator;
     float compVal = 100.0;
-    unsigned numOfTuples = 500;
+    unsigned numOfTuples = 200;
     float key;
 
     // create index file
@@ -66,7 +66,7 @@ int testCase_12(const string &indexFileName, const Attribute &attribute)
     unsigned count = 0;
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)
     {
-    	count++;
+        count++;
 
         if (count % 100 == 0) {
             cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << endl;

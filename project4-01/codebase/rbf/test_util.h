@@ -29,7 +29,7 @@ bool FileExists(string &fileName)
 // Calculate actual bytes for nulls-indicator for the given field counts
 int getActualByteForNullsIndicator(int fieldCount) {
 
-	return ceil((double) fieldCount / CHAR_BIT);
+    return ceil((double) fieldCount / CHAR_BIT);
 }
 
 
@@ -70,48 +70,48 @@ void prepareRecord(int fieldCount, unsigned char *nullFieldsIndicator, const int
 {
     int offset = 0;
 
-	// Null-indicators
+    // Null-indicators
     bool nullBit = false;
     int nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(fieldCount);
 
-	// Null-indicator for the fields
+    // Null-indicator for the fields
     memcpy((char *)buffer + offset, nullFieldsIndicator, nullFieldsIndicatorActualSize);
-	offset += nullFieldsIndicatorActualSize;
+    offset += nullFieldsIndicatorActualSize;
 
-	// Beginning of the actual data    
-	// Note that the left-most bit represents the first field. Thus, the offset is 7 from right, not 0.
-	// e.g., if a record consists of four fields and they are all nulls, then the bit representation will be: [11110000]
+    // Beginning of the actual data    
+    // Note that the left-most bit represents the first field. Thus, the offset is 7 from right, not 0.
+    // e.g., if a record consists of four fields and they are all nulls, then the bit representation will be: [11110000]
 
-	// Is the name field not-NULL?
-	nullBit = nullFieldsIndicator[0] & (1 << 7);
+    // Is the name field not-NULL?
+    nullBit = nullFieldsIndicator[0] & (1 << 7);
 
-	if (!nullBit) {
-		memcpy((char *)buffer + offset, &nameLength, sizeof(int));
-	    offset += sizeof(int);
-	    memcpy((char *)buffer + offset, name.c_str(), nameLength);
-	    offset += nameLength;
-	}
+    if (!nullBit) {
+        memcpy((char *)buffer + offset, &nameLength, sizeof(int));
+        offset += sizeof(int);
+        memcpy((char *)buffer + offset, name.c_str(), nameLength);
+        offset += nameLength;
+    }
 
-	// Is the age field not-NULL?
-	nullBit = nullFieldsIndicator[0] & (1 << 6);
-	if (!nullBit) {
-	    memcpy((char *)buffer + offset, &age, sizeof(int));
-	    offset += sizeof(int);
-	}
+    // Is the age field not-NULL?
+    nullBit = nullFieldsIndicator[0] & (1 << 6);
+    if (!nullBit) {
+        memcpy((char *)buffer + offset, &age, sizeof(int));
+        offset += sizeof(int);
+    }
 
-	// Is the height field not-NULL?
-	nullBit = nullFieldsIndicator[0] & (1 << 5);
-	if (!nullBit) {
-	    memcpy((char *)buffer + offset, &height, sizeof(float));
-	    offset += sizeof(float);
-	}
+    // Is the height field not-NULL?
+    nullBit = nullFieldsIndicator[0] & (1 << 5);
+    if (!nullBit) {
+        memcpy((char *)buffer + offset, &height, sizeof(float));
+        offset += sizeof(float);
+    }
 
-	// Is the height field not-NULL?
-	nullBit = nullFieldsIndicator[0] & (1 << 4);
-	if (!nullBit) {
-	    memcpy((char *)buffer + offset, &salary, sizeof(int));
-	    offset += sizeof(int);
-	}
+    // Is the height field not-NULL?
+    nullBit = nullFieldsIndicator[0] & (1 << 4);
+    if (!nullBit) {
+        memcpy((char *)buffer + offset, &salary, sizeof(int));
+        offset += sizeof(int);
+    }
 
     *recordSize = offset;
 }
@@ -121,19 +121,19 @@ void prepareLargeRecord(int fieldCount, unsigned char *nullFieldsIndicator, cons
     int offset = 0;
 
     // compute the count
-    int count = index % 50 + 1;
+    int count = (index + 2) % 50 + 1;
 
     // compute the letter
-    char text = index % 26 + 97;
+    char text = (index + 2) % 26 + 97;
 
-	// Null-indicators
+    // Null-indicators
     int nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(fieldCount);
 
-	// Null-indicators
-	memcpy((char *)buffer + offset, nullFieldsIndicator, nullFieldsIndicatorActualSize);
-	offset += nullFieldsIndicatorActualSize;
+    // Null-indicators
+    memcpy((char *)buffer + offset, nullFieldsIndicator, nullFieldsIndicatorActualSize);
+    offset += nullFieldsIndicatorActualSize;
 
-	// Actual data
+    // Actual data
     for(int i = 0; i < 10; i++)
     {
         memcpy((char *)buffer + offset, &count, sizeof(int));
@@ -184,106 +184,98 @@ void createRecordDescriptor(vector<Attribute> &recordDescriptor) {
 
 void createLargeRecordDescriptor(vector<Attribute> &recordDescriptor)
 {
-    int index = 0;
     char *suffix = (char *)malloc(10);
     for(int i = 0; i < 10; i++)
     {
         Attribute attr;
-        sprintf(suffix, "%d", index);
-        attr.name = "attr";
+        sprintf(suffix, "%d", i);
+        attr.name = "Char";
         attr.name += suffix;
         attr.type = TypeVarChar;
         attr.length = (AttrLength)50;
         recordDescriptor.push_back(attr);
-        index++;
 
-        sprintf(suffix, "%d", index);
-        attr.name = "attr";
+        sprintf(suffix, "%d", i);
+        attr.name = "Int";
         attr.name += suffix;
         attr.type = TypeInt;
         attr.length = (AttrLength)4;
         recordDescriptor.push_back(attr);
-        index++;
 
-        sprintf(suffix, "%d", index);
-        attr.name = "attr";
+        sprintf(suffix, "%d", i);
+        attr.name = "Real";
         attr.name += suffix;
         attr.type = TypeReal;
         attr.length = (AttrLength)4;
         recordDescriptor.push_back(attr);
-        index++;
     }
     free(suffix);
 }
 
 void prepareLargeRecord2(int fieldCount, unsigned char *nullFieldsIndicator, const int index, void *buffer, int *size) {
-	int offset = 0;
+    int offset = 0;
 
-	// compute the count
-	int count = index % 60 + 1;
+    // compute the count
+    int count = (index + 2) % 60 + 1;
 
-	// compute the letter
-	char text = index % 26 + 65;
+    // compute the letter
+    char text = (index + 2) % 26 + 65;
 
-	// Null-indicators
+    // Null-indicators
     int nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(fieldCount);
 
-	// Null-indicators
-	memcpy((char *)buffer + offset, nullFieldsIndicator, nullFieldsIndicatorActualSize);
-	offset += nullFieldsIndicatorActualSize;
+    // Null-indicators
+    memcpy((char *)buffer + offset, nullFieldsIndicator, nullFieldsIndicatorActualSize);
+    offset += nullFieldsIndicatorActualSize;
 
-	for (int i = 0; i < 10; i++) {
-		// compute the integer
-		memcpy((char *) buffer + offset, &index, sizeof(int));
-		offset += sizeof(int);
+    for (int i = 0; i < 10; i++) {
+        // compute the integer
+        memcpy((char *) buffer + offset, &index, sizeof(int));
+        offset += sizeof(int);
 
-		// compute the floating number
-		float real = (float) (index + 1);
-		memcpy((char *) buffer + offset, &real, sizeof(float));
-		offset += sizeof(float);
+        // compute the floating number
+        float real = (float) (index + 1);
+        memcpy((char *) buffer + offset, &real, sizeof(float));
+        offset += sizeof(float);
 
-		// compute the varchar field
-		memcpy((char *) buffer + offset, &count, sizeof(int));
-		offset += sizeof(int);
+        // compute the varchar field
+        memcpy((char *) buffer + offset, &count, sizeof(int));
+        offset += sizeof(int);
 
-		for (int j = 0; j < count; j++) {
-			memcpy((char *) buffer + offset, &text, 1);
-			offset += 1;
-		}
+        for (int j = 0; j < count; j++) {
+            memcpy((char *) buffer + offset, &text, 1);
+            offset += 1;
+        }
 
-	}
-	*size = offset;
+    }
+    *size = offset;
 }
 
 void createLargeRecordDescriptor2(vector<Attribute> &recordDescriptor) {
-	int index = 0;
-	char *suffix = (char *) malloc(10);
-	for (int i = 0; i < 10; i++) {
-		Attribute attr;
-		sprintf(suffix, "%d", index);
-		attr.name = "attr";
-		attr.name += suffix;
-		attr.type = TypeInt;
-		attr.length = (AttrLength) 4;
-		recordDescriptor.push_back(attr);
-		index++;
+    char *suffix = (char *) malloc(10);
+    for (int i = 0; i < 10; i++) {
+        Attribute attr;
+        sprintf(suffix, "%d", i);
+        attr.name = "Int";
+        attr.name += suffix;
+        attr.type = TypeInt;
+        attr.length = (AttrLength) 4;
+        recordDescriptor.push_back(attr);
 
-		sprintf(suffix, "%d", index);
-		attr.name = "attr";
-		attr.name += suffix;
-		attr.type = TypeReal;
-		attr.length = (AttrLength) 4;
-		recordDescriptor.push_back(attr);
-		index++;
+        sprintf(suffix, "%d", i);
+        attr.name = "Real";
+        attr.name += suffix;
+        attr.type = TypeReal;
+        attr.length = (AttrLength) 4;
+        recordDescriptor.push_back(attr);
 
-		sprintf(suffix, "%d", index);
-		attr.name = "attr";
-		attr.name += suffix;
-		attr.type = TypeVarChar;
-		attr.length = (AttrLength) 60;
-		recordDescriptor.push_back(attr);
-		index++;
+        sprintf(suffix, "%d", i);
+        attr.name = "Char";
+        attr.name += suffix;
+        attr.type = TypeVarChar;
+        attr.length = (AttrLength) 60;
+        recordDescriptor.push_back(attr);
 
-	}
-	free(suffix);
+    }
+    free(suffix);
 }

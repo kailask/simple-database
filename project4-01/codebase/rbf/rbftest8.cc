@@ -30,7 +30,7 @@ int RBFTest_8(RecordBasedFileManager *rbfm) {
     rc = rbfm->createFile(fileName);
     assert(rc == success && "Creating the file should not fail.");
 
-	rc = createFileShouldSucceed(fileName);
+    rc = createFileShouldSucceed(fileName);
     assert(rc == success && "Creating the file should not fail.");
 
     // Open the file "test8"
@@ -49,10 +49,10 @@ int RBFTest_8(RecordBasedFileManager *rbfm) {
     // Initialize a NULL field indicator
     int nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(recordDescriptor.size());
     unsigned char *nullsIndicator = (unsigned char *) malloc(nullFieldsIndicatorActualSize);
-	memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
+    memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
 
     // Insert a record into a file and print the record
-    prepareRecord(recordDescriptor.size(), nullsIndicator, 8, "Anteater", 24, 170.1, 5000, record, &recordSize);
+    prepareRecord(recordDescriptor.size(), nullsIndicator, 8, "Anteater", 25, 177.8, 6200, record, &recordSize);
     cout << endl << "Inserting Data:" << endl;
     rbfm->printRecord(recordDescriptor, record);
     
@@ -85,7 +85,7 @@ int RBFTest_8(RecordBasedFileManager *rbfm) {
     rc = rbfm->destroyFile(fileName);
     assert(rc == success && "Destroying the file should not fail.");
 
-	rc = destroyFileShouldSucceed(fileName);
+    rc = destroyFileShouldSucceed(fileName);
     assert(rc == success  && "Destroying the file should not fail.");
     
     free(record);

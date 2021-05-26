@@ -67,7 +67,7 @@ RC TEST_RM_5(const string &tableName, const int nameLength, const string &name, 
 int main()
 {
     // Delete Table
-    RC rcmain = TEST_RM_5("tbl_employee", 6, "Martin", 26, 173.6, 8000);
+    RC rcmain = TEST_RM_5("tbl_employee", 6, "Martin", 29, 193.6, 20000);
 
     return rcmain;
 }

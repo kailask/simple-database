@@ -9,7 +9,7 @@ RC TEST_RM_11(const string &tableName, vector<RID> &rids)
 
     int numTuples = 2000;
     RC rc = 0;
-    void * returnedData = malloc(2000);
+    void * returnedData = malloc(4000);
     
     readRIDsFromDisk(rids, numTuples);
 

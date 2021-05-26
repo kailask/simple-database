@@ -20,7 +20,7 @@ int testCase_8(const string &indexFileName, const Attribute &attribute)
     // 6. Close Index File
     // 7. Destroy Index File
     // NOTE: "**" signifies the new functions being tested in this test case.
-	cerr << endl << "***** In IX Test Case 8 *****" << endl;
+    cerr << endl << "***** In IX Test Case 8 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
@@ -28,9 +28,9 @@ int testCase_8(const string &indexFileName, const Attribute &attribute)
     unsigned numOfTuples = 300;
     unsigned numOfMoreTuples = 100;
     unsigned key;
-    int inRidPageNumSum = 0;
-    int outRidPageNumSum = 0;
-    int value = 5001;
+    int inRidSlotNumSum = 0;
+    int outRidSlotNumSum = 0;
+    unsigned value = 7001;
 
     // create index file
     RC rc = indexManager->createFile(indexFileName);
@@ -45,7 +45,7 @@ int testCase_8(const string &indexFileName, const Attribute &attribute)
     {
         key = i;
         rid.pageNum = key;
-        rid.slotNum = key+1;
+        rid.slotNum = key * 3;
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
@@ -56,12 +56,12 @@ int testCase_8(const string &indexFileName, const Attribute &attribute)
     {
         key = i;
         rid.pageNum = key;
-        rid.slotNum = key+1;
+        rid.slotNum = key * 3;
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
 
-        inRidPageNumSum += rid.pageNum;
+        inRidSlotNumSum += rid.slotNum;
     }
 
     // Scan
@@ -72,12 +72,12 @@ int testCase_8(const string &indexFileName, const Attribute &attribute)
     unsigned count = 0;
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)
     {
-    	count++;
+        count++;
 
         if (rid.pageNum % 100 == 0) {
             cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << endl;
         }
-        if (rid.pageNum < value || rid.slotNum < value + 1)
+        if (rid.pageNum < value || rid.slotNum < value * 3)
         {
             cerr << "Wrong entries output... The test failed" << endl;
             rc = ix_ScanIterator.close();
@@ -85,11 +85,11 @@ int testCase_8(const string &indexFileName, const Attribute &attribute)
             rc = indexManager->destroyFile(indexFileName);
             return fail;
         }
-        outRidPageNumSum += rid.pageNum;
+        outRidSlotNumSum += rid.slotNum;
     }
 
     // Inconsistency check
-    if (inRidPageNumSum != outRidPageNumSum)
+    if (inRidSlotNumSum != outRidSlotNumSum)
     {
         cerr << "Wrong entries output... The test failed" << endl;
         rc = ix_ScanIterator.close();

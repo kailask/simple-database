@@ -25,8 +25,8 @@ int testCase_6(const string &indexFileName, const Attribute &attribute)
     IXFileHandle ixfileHandle;
     IX_ScanIterator ix_ScanIterator;
     unsigned key;
-    int inRidPageNumSum = 0;
-    int outRidPageNumSum = 0;
+    int inRidSlotNumSum = 0;
+    int outRidSlotNumSum = 0;
     unsigned numOfTuples = 1000;
 
     // create index file
@@ -42,12 +42,13 @@ int testCase_6(const string &indexFileName, const Attribute &attribute)
     {
         key = i; 
         rid.pageNum = key;
-        rid.slotNum = key+1;
+        rid.slotNum = key * 3;
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
+
         assert(rc == success && "indexManager::insertEntry() should not fail.");
 
-        inRidPageNumSum += rid.pageNum;
+        inRidSlotNumSum += rid.slotNum;
     }
 
     // Scan
@@ -60,14 +61,14 @@ int testCase_6(const string &indexFileName, const Attribute &attribute)
     {
         count++;
 
-    	if (rid.pageNum % 200 == 0) {
+        if (rid.pageNum % 200 == 0) {
             cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << endl;
         }
-        outRidPageNumSum += rid.pageNum;
+        outRidSlotNumSum += rid.slotNum;
     }
 
     // Inconsistency between insert and scan?
-    if (inRidPageNumSum != outRidPageNumSum)
+    if (inRidSlotNumSum != outRidSlotNumSum)
     {
         cerr << "Wrong entries output... The test failed." << endl;
         rc = ix_ScanIterator.close();

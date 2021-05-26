@@ -41,52 +41,52 @@ int RBFTest_10(RecordBasedFileManager *rbfm) {
     vector<int> sizes;
     RID tempRID;
 
-	// Read rids from the disk - do not use this code in your codebase. This is not a PAGE-BASED operation - for the test purpose only.
-	ifstream ridsFileRead("test9rids", ios::in | ios::binary);
+    // Read rids from the disk - do not use this code in your codebase. This is not a PAGE-BASED operation - for the test purpose only.
+    ifstream ridsFileRead("test9rids", ios::in | ios::binary);
 
-	unsigned pageNum;
-	unsigned slotNum;
+    unsigned pageNum;
+    unsigned slotNum;
 
-	if (ridsFileRead.is_open()) {
-		ridsFileRead.seekg(0,ios::beg);
-		for (int i = 0; i < numRecords; i++) {
-			ridsFileRead.read(reinterpret_cast<char*>(&pageNum), sizeof(unsigned));
-			ridsFileRead.read(reinterpret_cast<char*>(&slotNum), sizeof(unsigned));
-			if (i % 1000 == 0) {
-				cout << "loaded RID #" << i << ": " << pageNum << ", " << slotNum << endl;
-			}
-			tempRID.pageNum = pageNum;
-			tempRID.slotNum = slotNum;
-			rids.push_back(tempRID);
-		}
-		ridsFileRead.close();
-	}
+    if (ridsFileRead.is_open()) {
+        ridsFileRead.seekg(0,ios::beg);
+        for (int i = 0; i < numRecords; i++) {
+            ridsFileRead.read(reinterpret_cast<char*>(&pageNum), sizeof(unsigned));
+            ridsFileRead.read(reinterpret_cast<char*>(&slotNum), sizeof(unsigned));
+            if (i % 1000 == 0) {
+                cout << "loaded RID #" << i << ": " << pageNum << ", " << slotNum << endl;
+            }
+            tempRID.pageNum = pageNum;
+            tempRID.slotNum = slotNum;
+            rids.push_back(tempRID);
+        }
+        ridsFileRead.close();
+    }
 
-	assert(rids.size() == (unsigned) numRecords && "Reading records should not fail.");
+    assert(rids.size() == (unsigned) numRecords && "Reading records should not fail.");
 
-	// Read sizes vector from the disk - do not use this code in your codebase. This is not a PAGE-BASED operation - for the test purpose only.
-	ifstream sizesFileRead("test9sizes", ios::in | ios::binary);
+    // Read sizes vector from the disk - do not use this code in your codebase. This is not a PAGE-BASED operation - for the test purpose only.
+    ifstream sizesFileRead("test9sizes", ios::in | ios::binary);
 
-	int tempSize;
-	
-	if (sizesFileRead.is_open()) {
-		sizesFileRead.seekg(0,ios::beg);
-		for (int i = 0; i < numRecords; i++) {
-			sizesFileRead.read(reinterpret_cast<char*>(&tempSize), sizeof(int));
-			if (i % 1000 == 0) {
-				cout << "loaded Sizes #" << i << ": " << tempSize << endl;
-			}
-			sizes.push_back(tempSize);
-		}
-		sizesFileRead.close();
-	}
+    int tempSize;
+    
+    if (sizesFileRead.is_open()) {
+        sizesFileRead.seekg(0,ios::beg);
+        for (int i = 0; i < numRecords; i++) {
+            sizesFileRead.read(reinterpret_cast<char*>(&tempSize), sizeof(int));
+            if (i % 1000 == 0) {
+                cout << "loaded Sizes #" << i << ": " << tempSize << endl;
+            }
+            sizes.push_back(tempSize);
+        }
+        sizesFileRead.close();
+    }
 
-	assert(sizes.size() == (unsigned) numRecords && "Reading records should not fail.");
+    assert(sizes.size() == (unsigned) numRecords && "Reading records should not fail.");
 
     // NULL field indicator
     int nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(recordDescriptor.size());
     unsigned char *nullsIndicator = (unsigned char *) malloc(nullFieldsIndicatorActualSize);
-	memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
+    memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
 
     for(int i = 0; i < numRecords; i++)
     {
@@ -120,18 +120,18 @@ int RBFTest_10(RecordBasedFileManager *rbfm) {
     rc = rbfm->destroyFile(fileName);
     assert(rc == success && "Destroying the file should not fail.");
 
-	rc = destroyFileShouldSucceed(fileName);
+    rc = destroyFileShouldSucceed(fileName);
     assert(rc == success  && "Destroying the file should not fail.");
 
-	free(record);
-	free(returnedData);
+    free(record);
+    free(returnedData);
 
-	cout << "RBF Test Case 10 Finished! The result will be examined." << endl << endl;
+    cout << "RBF Test Case 10 Finished! The result will be examined." << endl << endl;
 
-	remove("test9sizes");
-	remove("test9rids");
-	
-	return 0;
+    remove("test9sizes");
+    remove("test9rids");
+    
+    return 0;
 }
 
 int main()

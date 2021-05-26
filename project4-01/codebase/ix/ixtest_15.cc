@@ -21,15 +21,13 @@ int testCase_15(const string &indexFileName, const Attribute &attribute)
     // 5. DestroyIndex
     // NOTE: "**" signifies the new functions being tested in this test case.
 
-	cerr << endl << "***** In IX Test Case 15 *****" << endl;
+    cerr << endl << "***** In IX Test Case 15 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
     IX_ScanIterator ix_ScanIterator;
     int key = 300;
     unsigned numOfTuples = 50;
-
-    int inRidPageNumSum = 0;
 
     // create index file
     RC rc = indexManager->createFile(indexFileName);
@@ -47,8 +45,6 @@ int testCase_15(const string &indexFileName, const Attribute &attribute)
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
-
-        inRidPageNumSum += rid.pageNum;
     }
 
     // eyeball check: a key only appears once in each node (both inner nodes and leaf nodes)

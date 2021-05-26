@@ -17,7 +17,7 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
     // Close Index
     // Destroy Index
 
-	cerr << endl << "***** In IX Test Case 11 *****" << endl;
+    cerr << endl << "***** In IX Test Case 11 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
@@ -39,14 +39,14 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
     for(unsigned i = 0; i <= numOfTuples; i++)
     {
         key = i; 
-        rid.pageNum = key+1;
-        rid.slotNum = key+2;
+        rid.pageNum = key + 1;
+        rid.slotNum = key + 2;
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
         inRecordNum += 1;
         if (inRecordNum % 200000 == 0) {
-        	cerr << inRecordNum << " inserted - rid: " << rid.pageNum << " " << rid.slotNum << endl;
+            cerr << inRecordNum << " inserted - rid: " << rid.pageNum << " " << rid.slotNum << endl;
         }
     }
 
@@ -58,7 +58,7 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
     cerr << endl;
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)
     {
-        if (rid.pageNum != key +1 ||  rid.slotNum != key + 2) {
+        if (rid.pageNum != key + 1 || rid.slotNum != key + 2) {
             cerr << "Wrong entries output... The test failed." << endl;
             rc = ix_ScanIterator.close();
             rc = indexManager->closeFile(ixfileHandle);
@@ -66,12 +66,12 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
         }
         outRecordNum += 1;
         if (outRecordNum % 200000 == 0) {
-        	cerr << outRecordNum << " scanned. " << endl;
+            cerr << outRecordNum << " scanned. " << endl;
         }
     }
 
     // Inconsistency?
-    if (inRecordNum != outRecordNum)
+    if (inRecordNum != outRecordNum || inRecordNum == 0 || outRecordNum == 0)
     {
         cerr << "Wrong entries output... The test failed." << endl;
         rc = ix_ScanIterator.close();
@@ -82,18 +82,18 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
     // Delete some tuples
     cerr << endl;
     unsigned deletedRecordNum = 0;
-    for(unsigned i = 0; i <= numOfTuples; i+=10)
+    for(unsigned i = 5; i <= numOfTuples; i += 10)
     {
         key = i; 
-        rid.pageNum = key+1;
-        rid.slotNum = key+2;
+        rid.pageNum = key + 1;
+        rid.slotNum = key + 2;
 
         rc = indexManager->deleteEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::deleteEntry() should not fail.");
 
         deletedRecordNum += 1;
         if (deletedRecordNum % 20000 == 0) {
-        	cerr << deletedRecordNum << " deleted. " << endl;
+            cerr << deletedRecordNum << " deleted. " << endl;
         }
     }
 
@@ -109,7 +109,7 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
     outRecordNum = 0;
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)
     {
-        if (rid.pageNum != key +1 ||  rid.slotNum != key + 2) {
+        if (rid.pageNum != key + 1 || rid.slotNum != key + 2) {
             cerr << "Wrong entries output... The test failed." << endl;
             rc = ix_ScanIterator.close();
             rc = indexManager->closeFile(ixfileHandle);
@@ -117,14 +117,14 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
         }
         outRecordNum += 1;
         if (outRecordNum % 200000 == 0) {
-        	cerr << outRecordNum << " scanned. " << endl;
+            cerr << outRecordNum << " scanned. " << endl;
         }
 
     }
-	cerr << outRecordNum << " scanned. " << endl;
+    cerr << outRecordNum << " scanned. " << endl;
 
     // Inconsistency?
-    if ((inRecordNum - deletedRecordNum) != outRecordNum)
+    if ((inRecordNum - deletedRecordNum) != outRecordNum || inRecordNum == 0 || deletedRecordNum == 0 || outRecordNum == 0)
     {
         cerr << "Wrong entries output... The test failed." << endl;
         rc = ix_ScanIterator.close();
@@ -135,19 +135,19 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
     // Insert the deleted entries again
     int reInsertedRecordNum = 0;
     cerr << endl;
-    for(unsigned i = 0; i <= numOfTuples; i+=10)
+    for(unsigned i = 5; i <= numOfTuples; i += 10)
     {
         key = i; 
-        rid.pageNum = key+1;
-        rid.slotNum = key+2;
+        rid.pageNum = key + 1;
+        rid.slotNum = key + 2;
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
 
         reInsertedRecordNum += 1;
-		if (reInsertedRecordNum % 20000 == 0) {
-			cerr << reInsertedRecordNum << " inserted - rid: " << rid.pageNum << " " << rid.slotNum << endl;
-		}
+        if (reInsertedRecordNum % 20000 == 0) {
+            cerr << reInsertedRecordNum << " inserted - rid: " << rid.pageNum << " " << rid.slotNum << endl;
+        }
     }
 
     // Close Scan and reinitialize the scan
@@ -162,7 +162,7 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
     outRecordNum = 0;
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)
     {
-        if (rid.pageNum != key +1 ||  rid.slotNum != key + 2) {
+        if (rid.pageNum != key + 1 || rid.slotNum != key + 2) {
             cerr << "Wrong entries output... The test failed." << endl;
             rc = ix_ScanIterator.close();
             rc = indexManager->closeFile(ixfileHandle);
@@ -171,13 +171,14 @@ int testCase_11(const string &indexFileName, const Attribute &attribute){
         outRecordNum += 1;
 
         if (outRecordNum % 200000 == 0) {
-        	cerr << outRecordNum << " scanned. " << endl;
+            cerr << outRecordNum << " scanned. " << endl;
         }
 
     }
 
     // Inconsistency?
-    if ((inRecordNum - deletedRecordNum + reInsertedRecordNum) != outRecordNum)
+    if ((inRecordNum - deletedRecordNum + reInsertedRecordNum) != outRecordNum || inRecordNum == 0 
+         || reInsertedRecordNum == 0 || outRecordNum == 0)
     {
         cerr << "Wrong entries output... The test failed." << endl;
         rc = ix_ScanIterator.close();

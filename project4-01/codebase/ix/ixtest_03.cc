@@ -20,9 +20,9 @@ int testCase_3(const string &indexFileName, const Attribute &attribute)
     cerr << endl << "***** In IX Test Case 3 *****" << endl;
 
     RID rid;
-    int key = 100;
-    rid.pageNum = key;
-    rid.slotNum = key+1;
+    int key = 200;
+    rid.pageNum = 500;
+    rid.slotNum = 20;
 
     unsigned readPageCount = 0;
     unsigned writePageCount = 0;
@@ -56,8 +56,8 @@ int testCase_3(const string &indexFileName, const Attribute &attribute)
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)
     {
         cerr << "Returned rid from a scan: " << rid.pageNum << " " << rid.slotNum << endl;
-        assert(rid.pageNum == key && "rid.pageNum is not correct.");
-        assert(rid.slotNum == key+1 && "rid.slotNum is not correct.");
+        assert(rid.pageNum == 500 && "rid.pageNum is not correct.");
+        assert(rid.slotNum == 20 && "rid.slotNum is not correct.");
         count++;
     }
     assert(count == 1 && "scan count is not correct.");

@@ -30,7 +30,7 @@ int RBFTest_8b(RecordBasedFileManager *rbfm) {
     rc = rbfm->createFile(fileName);
     assert(rc == success && "Creating the file should not fail.");
 
-	rc = createFileShouldSucceed(fileName);
+    rc = createFileShouldSucceed(fileName);
     assert(rc == success && "Creating the file failed.");
 
     // Open the file "test8b"
@@ -49,13 +49,13 @@ int RBFTest_8b(RecordBasedFileManager *rbfm) {
     // NULL field indicator
     int nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(recordDescriptor.size());
     unsigned char *nullsIndicator = (unsigned char *) malloc(nullFieldsIndicatorActualSize);
-	memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
+    memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
 
-	// Setting the salary field value as null
-	nullsIndicator[0] = 16; // 00010000
-	
+    // Setting the age & salary fields value as null
+    nullsIndicator[0] = 80; // 01010000
+    
     // Insert a record into a file
-    prepareRecord(recordDescriptor.size(), nullsIndicator, 8, "Anteater", 24, 170.1, NULL, record, &recordSize);
+    prepareRecord(recordDescriptor.size(), nullsIndicator, 8, "Anteater", NULL, 177.8, NULL, record, &recordSize);
     cout << endl << "Inserting Data:" << endl;
     rbfm->printRecord(recordDescriptor, record);
     
@@ -66,7 +66,7 @@ int RBFTest_8b(RecordBasedFileManager *rbfm) {
     rc = rbfm->readRecord(fileHandle, recordDescriptor, rid, returnedData);
     assert(rc == success && "Reading a record should not fail.");
 
-	// The salary field should not be printed
+    // The salary field should not be printed
     cout << endl << "Returned Data:" << endl;
     rbfm->printRecord(recordDescriptor, returnedData);
 
@@ -102,7 +102,7 @@ int RBFTest_8b(RecordBasedFileManager *rbfm) {
 
 int main()
 {
-	// To test the functionality of the paged file manager
+    // To test the functionality of the paged file manager
     // PagedFileManager *pfm = PagedFileManager::instance();
     
     // To test the functionality of the record-based file manager 

@@ -59,7 +59,7 @@ RC TEST_RM_2(const string &tableName, const int nameLength, const string &name, 
 int main()
 {
     // Delete Tuple
-    RC rcmain = TEST_RM_2("tbl_employee", 6, "Peters", 23, 5.9, 8000);
+    RC rcmain = TEST_RM_2("tbl_employee", 5, "Peter", 23, 5.11, 12000);
 
     return rcmain;
 }

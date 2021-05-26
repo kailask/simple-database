@@ -17,7 +17,7 @@ RC TEST_RM_12(const string &tableName)
 
     RID rid;
     int j = 0;
-    void *returnedData = malloc(2000);
+    void *returnedData = malloc(4000);
 
     int nullAttributesIndicatorActualSize = getActualByteForNullsIndicator(attrs.size());
 
@@ -47,7 +47,7 @@ RC TEST_RM_12(const string &tableName)
             free(buffer);
         }
         j++;
-        memset(returnedData, 0, 2000);
+        memset(returnedData, 0, 4000);
     }
     rmsi.close();
     cout << "Total number of tuples: " << j << endl << endl;
