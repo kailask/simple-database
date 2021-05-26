@@ -1,0 +1,29 @@
+1. Basic information
+Team number (e.g., 01) : 
+#1 Student ID : 
+#1 Student Name : 
+#2 Student ID : 
+#2 Student Name : 
+#3 Student ID : 
+#3 Student Name : 
+
+
+2. Catalog information about Index
+- Show what catalog information you store for an index. 
+
+
+3. Index Nested Loop Join
+- Describe how your Index Nested Loop Join works.
+
+
+4. Implementation Detail
+- Have you added your own source file (.cc or .h)?
+
+- Have you implemented any features not described in the Project4 pdf? If so, describe them here.
+
+- Implementation details to help us understand and grade your code:
+
+
+5. Other (optional)
+- Freely use this section to tell us about things that are related to the project 4, but not related to the other sections (optional)
+
