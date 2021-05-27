@@ -423,6 +423,27 @@ RC RelationManager::readAttribute(const string &tableName, const RID &rid, const
     return rc;
 }
 
+RC RelationManager::createIndex(const string &tableName, const string &attributeName)
+{
+	return -1;
+}
+
+RC RelationManager::destroyIndex(const string &tableName, const string &attributeName)
+{
+	return -1;
+}
+
+RC RelationManager::indexScan(const string &tableName,
+                      const string &attributeName,
+                      const void *lowKey,
+                      const void *highKey,
+                      bool lowKeyInclusive,
+                      bool highKeyInclusive,
+                      RM_IndexScanIterator &rm_IndexScanIterator)
+{
+	return -1;
+}
+
 string RelationManager::getFileName(const char *tableName)
 {
     return string(tableName) + string(TABLE_FILE_EXTENSION);
