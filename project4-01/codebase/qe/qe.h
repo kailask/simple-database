@@ -1,6 +1,7 @@
 #ifndef _qe_h_
 #define _qe_h_
 
+#include <functional>
 #include <vector>
 
 #include "../ix/ix.h"
@@ -8,6 +9,8 @@
 #include "../rm/rm.h"
 
 #define QE_EOF (-1)  // end of the index scan
+#define SUCCESS 0
+#define FAILURE -1
 
 using namespace std;
 
@@ -25,6 +28,12 @@ typedef enum { MIN = 0,
 struct Value {
     AttrType type;  // type of value
     void *data;     // value
+
+    bool compare(CompOp op, Value other);
+
+   private:
+    template <typename t>
+    function<bool(t, t)> getOperator(CompOp op);
 };
 
 struct Condition {
@@ -41,6 +50,18 @@ class Iterator {
     virtual RC getNextTuple(void *data) = 0;
     virtual void getAttributes(vector<Attribute> &attrs) const = 0;
     virtual ~Iterator(){};
+};
+
+//Represent an iterator tuple
+class Tuple {
+   public:
+    vector<Attribute> &attrs;
+    char *data;
+
+    Tuple(vector<Attribute> &attrs_, char *data_) : attrs(attrs_), data(data_) {}
+
+    Value getAttr(const string &attr_name);
+    bool isNull(size_t index) { return (*(data + (index / CHAR_BIT)) << (index % CHAR_BIT)) & 0x8; }  //Is attribute null at index?
 };
 
 class TableScan : public Iterator {
@@ -175,14 +196,21 @@ class IndexScan : public Iterator {
 class Filter : public Iterator {
     // Filter operator
    public:
-    Filter(Iterator *input,            // Iterator of input R
-           const Condition &condition  // Selection condition
+    Iterator *input;
+    const Condition &condition;
+    vector<Attribute> attrs;
+
+    Filter(Iterator *input_,            // Iterator of input R
+           const Condition &condition_  // Selection condition
     );
     ~Filter(){};
 
-    RC getNextTuple(void *data) { return QE_EOF; };
+    RC getNextTuple(void *data);
     // For attribute in vector<Attribute>, name it as rel.attr
     void getAttributes(vector<Attribute> &attrs) const {};
+
+   private:
+    bool isFilteredTuple(void *data);
 };
 
 class Project : public Iterator {
