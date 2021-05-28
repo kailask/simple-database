@@ -7,18 +7,36 @@
 
 #include "../rbf/pfm.h"
 
+#define INT_SIZE                4
+#define REAL_SIZE               4
+#define VARCHAR_LENGTH_SIZE     4
+
+#define SUCCESS 0
+
+#define RBFM_CREATE_FAILED  1
+#define RBFM_MALLOC_FAILED  2
+#define RBFM_OPEN_FAILED    3
+#define RBFM_APPEND_FAILED  4
+#define RBFM_READ_FAILED    5
+#define RBFM_WRITE_FAILED   6
+#define RBFM_SLOT_DN_EXIST  7
+#define RBFM_READ_AFTER_DEL 8
+#define RBFM_NO_SUCH_ATTR   9
+
 using namespace std;
 
 // Record ID
 typedef struct
 {
-  unsigned pageNum;	// page number
-  unsigned slotNum; // slot number in the page
+    uint32_t pageNum; // page number
+    uint32_t slotNum; // slot number in the page
 } RID;
 
 
 // Attribute
 typedef enum { TypeInt = 0, TypeReal, TypeVarChar } AttrType;
+// 
+typedef enum { VALID = 0, MOVED, DEAD} SlotStatus;
 
 typedef unsigned AttrLength;
 
@@ -29,14 +47,44 @@ struct Attribute {
 };
 
 // Comparison Operator (NOT needed for part 1 of the project)
-typedef enum { EQ_OP = 0, // =
-           LT_OP,      // <
-           LE_OP,      // <=
-           GT_OP,      // >
-           GE_OP,      // >=
-           NE_OP,      // !=
-           NO_OP	   // no condition
+typedef enum 
+{ 
+    EQ_OP = 0,  // no condition// = 
+    LT_OP,      // <
+    LE_OP,      // <=
+    GT_OP,      // >
+    GE_OP,      // >=
+    NE_OP,      // !=
+    NO_OP       // no condition
 } CompOp;
+
+// Slot directory headers for page organization
+// See chapter 9.6.2 of the cow book or lecture 3 slide 16 for more information
+typedef struct SlotDirectoryHeader
+{
+    uint16_t freeSpaceOffset;
+    uint16_t recordEntriesNumber;
+} SlotDirectoryHeader;
+
+// Assignment 2 tip: Make offset negative to represent a forwarding address
+// Negative offset => length = page #, offset = -slot #
+typedef struct SlotDirectoryRecordEntry
+{
+    uint32_t length; 
+    int32_t offset;
+} SlotDirectoryRecordEntry;
+
+typedef struct IndexedRecordEntry
+{
+    int32_t slotNum;
+    SlotDirectoryRecordEntry recordEntry;
+} IndexedRecordEntry;
+
+typedef SlotDirectoryRecordEntry* SlotDirectory;
+
+typedef uint16_t ColumnOffset;
+
+typedef uint16_t RecordLength;
 
 
 /********************************************************************************
@@ -53,17 +101,59 @@ The scan iterator is NOT required to be implemented for the part 1 of the projec
 //    process the data;
 //  }
 //  rbfmScanIterator.close();
+class RecordBasedFileManager;
 
 class RBFM_ScanIterator {
 public:
-  RBFM_ScanIterator() {};
+  RBFM_ScanIterator();
   ~RBFM_ScanIterator() {};
 
   // Never keep the results in the memory. When getNextRecord() is called, 
   // a satisfying record needs to be fetched from the file.
   // "data" follows the same format as RecordBasedFileManager::insertRecord().
-  RC getNextRecord(RID &rid, void *data) { return RBFM_EOF; };
-  RC close() { return -1; };
+  RC getNextRecord(RID &rid, void *data);
+  RC close();
+
+  friend class RecordBasedFileManager;
+
+private:
+  RecordBasedFileManager *rbfm;
+
+  uint32_t currPage;
+  uint32_t currSlot;
+
+  uint32_t totalPage;
+  uint16_t totalSlot;
+
+  void *pageData;
+
+  AttrType type;
+  unsigned attrIndex;
+
+  FileHandle fileHandle;
+  vector<Attribute> recordDescriptor;
+  string conditionAttribute;
+  CompOp compOp;
+  const void* value;
+  vector<string> attributeNames;
+
+  vector<RID> skipList;
+
+  RC scanInit(FileHandle &fh,
+        const vector<Attribute> rd,
+        const string &ca, 
+        const CompOp compOp, 
+        const void *v, 
+        const vector<string> &an);
+
+  RC getNextSlot();
+  RC getNextPage();
+  RC handleMovedRecord(bool &status, const RID rid, void *data);
+  bool checkScanCondition();
+  RC checkScanCondition(bool &result, const RID rid);
+  bool checkScanCondition(int, CompOp, const void*);
+  bool checkScanCondition(float, CompOp, const void*);
+  bool checkScanCondition(char*, CompOp, const void*);
 };
 
 
@@ -93,7 +183,7 @@ public:
   //  3) For Int and Real: use 4 bytes to store the value;
   //     For Varchar: use 4 bytes to store the length of characters, then store the actual characters.
   //  !!! The same format is used for updateRecord(), the returned data of readRecord(), and readAttribute().
-  // For example, refer to the Q8 of Project 1 wiki page.
+  // For example, refer to the Q6 of Project 1 Environment document.
   RC insertRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const void *data, RID &rid);
 
   RC readRecord(FileHandle &fileHandle, const vector<Attribute> &recordDescriptor, const RID &rid, void *data);
@@ -125,6 +215,7 @@ IMPORTANT, PLEASE READ: All methods below this comment (other than the construct
       RBFM_ScanIterator &rbfm_ScanIterator);
 
 public:
+  friend class RBFM_ScanIterator;
 
 protected:
   RecordBasedFileManager();
@@ -132,6 +223,35 @@ protected:
 
 private:
   static RecordBasedFileManager *_rbf_manager;
+  static PagedFileManager *_pf_manager;
+
+  // Private helper methods
+
+  void newRecordBasedPage(void * page);
+
+  SlotDirectoryHeader getSlotDirectoryHeader(void * page);
+  void setSlotDirectoryHeader(void * page, SlotDirectoryHeader slotHeader);
+
+  SlotDirectoryRecordEntry getSlotDirectoryRecordEntry(void * page, unsigned recordEntryNumber);
+  void setSlotDirectoryRecordEntry(void * page, unsigned recordEntryNumber, SlotDirectoryRecordEntry recordEntry);
+
+  unsigned getPageFreeSpaceSize(void * page);
+  unsigned getRecordSize(const vector<Attribute> &recordDescriptor, const void *data);
+
+  int getNullIndicatorSize(int fieldCount);
+  bool fieldIsNull(char *nullIndicator, int i);
+
+  void setRecordAtOffset(void *page, unsigned offset, const vector<Attribute> &recordDescriptor, const void *data);
+  void getRecordAtOffset(void *record, int32_t offset, const vector<Attribute> &recordDescriptor, void *data);
+
+  SlotStatus getSlotStatus (SlotDirectoryRecordEntry slot);
+  unsigned getOpenSlot(void *page);
+
+  void markSlotDeleted(void *page, unsigned i);
+
+  void reorganizePage(void *page);
+
+  void getAttributeFromRecord(void *page, unsigned offset, unsigned attrIndex, AttrType type,void *data);
 };
 
 #endif
