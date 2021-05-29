@@ -49,20 +49,36 @@ template <typename t>
 function<bool(t, t)> Value::getOperator(CompOp op) const {
     switch (op) {
         case EQ_OP:
-            return [](t lhs, t rhs) { return lhs == rhs };
+            return [](t lhs, t rhs) { return lhs == rhs; };
         case LT_OP:
-            return [](t lhs, t rhs) { return lhs < rhs };
+            return [](t lhs, t rhs) { return lhs < rhs; };
         case LE_OP:
-            return [](t lhs, t rhs) { return lhs <= rhs };
+            return [](t lhs, t rhs) { return lhs <= rhs; };
         case GT_OP:
-            return [](t lhs, t rhs) { return lhs > rhs };
+            return [](t lhs, t rhs) { return lhs > rhs; };
         case GE_OP:
-            return [](t lhs, t rhs) { return lhs >= rhs };
+            return [](t lhs, t rhs) { return lhs >= rhs; };
         case NE_OP:
-            return [](t lhs, t rhs) { return lhs != rhs };
+            return [](t lhs, t rhs) { return lhs != rhs; };
         case NO_OP:
         default:
-            return [](t lhs, t rhs) { return true };
+            return [](t lhs, t rhs) { return true; };
+    }
+}
+
+//Get total size of value
+size_t Value::getSize() const {
+    switch (type) {
+        case TypeReal:
+            return REAL_SIZE;
+        case TypeInt:
+            return INT_SIZE;
+        case TypeVarChar:
+            unsigned len;
+            memcpy(&len, data, VARCHAR_LENGTH_SIZE);
+            return len + VARCHAR_LENGTH_SIZE;
+        default:
+            return 0;
     }
 }
 
@@ -111,10 +127,20 @@ Tuple Tuple::Builder::getTuple() const {
 
 //Append a given value to the builder
 void Tuple::Builder::appendValue(const Value& v, const string& attr_name) {
-    size_t index = attrs.size();
-    attrs.emplace_back(v.type, attr_name);
+    if (num_attrs == attrs.size()) return;
 
-    // *(data + (index / CHAR_BIT)) = *data | (v.data == NULL) << (index % CHAR_BIT);
+    size_t index = attrs.size();
+    attrs.push_back({attr_name, v.type});
+
+    //Set null bit
+    char null_bit = (v.data == NULL) ? 0x8 : 0x0;
+    *(data + (index / CHAR_BIT)) = *(data + (index / CHAR_BIT)) | null_bit >> (index % CHAR_BIT);
+
+    //Copy data
+    if (v.data != NULL) {
+        memcpy(data_end, v.data, v.getSize());
+        data_end += v.getSize();
+    }
 }
 
 // Filter ====================================================================
@@ -143,7 +169,7 @@ bool Filter::isFilteredTuple(void* data) {
 
 void Filter::getAttributes(vector<Attribute>& attrs_) const {
     attrs_.clear();
-    attrs_.emplace_back(attrs);
+    attrs_.insert(attrs_.end(), attrs.begin(), attrs.end());
 };
 
 // Project ===================================================================
@@ -165,5 +191,11 @@ RC Project::getNextTuple(void* data) {
 
 void Project::getAttributes(vector<Attribute>& attrs_) const {
     attrs_.clear();
-    attrs_.emplace_back(output_attrs);
+    attrs_.insert(attrs_.end(), output_attrs.begin(), output_attrs.end());
 };
+
+// INLJoin ===================================================================
+
+INLJoin::INLJoin(Iterator* leftIn_, IndexScan* rightIn_, const Condition& condition_)
+    : leftIn(leftIn_), rightIn(rightIn_), condition(condition_) {
+}

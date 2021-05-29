@@ -10,7 +10,6 @@
 
 #define QE_EOF (-1)  // end of the index scan
 #define SUCCESS 0
-#define FAILURE -1
 
 using namespace std;
 
@@ -30,6 +29,7 @@ struct Value {
     void *data;     // value
 
     bool compare(CompOp op, const Value &other) const;
+    size_t getSize() const;
 
    private:
     template <typename t>
@@ -82,7 +82,9 @@ class Tuple {
     const vector<Attribute> attrs;
     char *data;
 
-    bool isNull(size_t index) const { return (*(data + (index / CHAR_BIT)) << (index % CHAR_BIT)) & 0x8; }  //Is attribute null at index?
+    bool isNull(size_t index) const {
+        return (*(data + (index / CHAR_BIT)) << (index % CHAR_BIT)) & 0x8;
+    }  //Is attribute null at index?
 };
 
 class TableScan : public Iterator {
@@ -246,7 +248,7 @@ class Project : public Iterator {
             const vector<string> &attrNames);  // vector containing attribute names
     ~Project(){};
 
-    RC getNextTuple(void *data) { return QE_EOF; };
+    RC getNextTuple(void *data);
     // For attribute in vector<Attribute>, name it as rel.attr
     void getAttributes(vector<Attribute> &attrs_) const;
 };
@@ -254,10 +256,15 @@ class Project : public Iterator {
 class INLJoin : public Iterator {
     // Index nested-loop join operator
    public:
-    INLJoin(Iterator *leftIn,           // Iterator of input R
-            IndexScan *rightIn,         // IndexScan Iterator of input S
-            const Condition &condition  // Join condition
-    ){};
+    Iterator *leftIn;
+    IndexScan *rightIn;
+    const Condition &condition;
+    char buffer[PAGE_SIZE];  //Buffer for parsing tuples
+
+    INLJoin(Iterator *leftIn_,           // Iterator of input R
+            IndexScan *rightIn_,         // IndexScan Iterator of input S
+            const Condition &condition_  // Join condition
+    );
     ~INLJoin(){};
 
     RC getNextTuple(void *data) { return QE_EOF; };
