@@ -250,7 +250,7 @@ class Project : public Iterator {
 
     RC getNextTuple(void *data);
     // For attribute in vector<Attribute>, name it as rel.attr
-    void getAttributes(vector<Attribute> &attrs_) const;
+    void getAttributes(vector<Attribute> &attrs) const;
 };
 
 class INLJoin : public Iterator {
@@ -260,6 +260,10 @@ class INLJoin : public Iterator {
     IndexScan *rightIn;
     const Condition &condition;
     char buffer[PAGE_SIZE];  //Buffer for parsing tuples
+
+    vector<Attribute> left_attrs;
+    vector<Attribute> right_attrs;
+    vector<Attribute> output_attrs;
 
     INLJoin(Iterator *leftIn_,           // Iterator of input R
             IndexScan *rightIn_,         // IndexScan Iterator of input S

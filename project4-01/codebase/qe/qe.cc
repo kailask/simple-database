@@ -189,13 +189,23 @@ RC Project::getNextTuple(void* data) {
     return SUCCESS;
 }
 
-void Project::getAttributes(vector<Attribute>& attrs_) const {
-    attrs_.clear();
-    attrs_.insert(attrs_.end(), output_attrs.begin(), output_attrs.end());
+void Project::getAttributes(vector<Attribute>& attrs) const {
+    attrs.clear();
+    for (const string& attr_name : output_attrs) {
+        for (const Attribute& attr : input_attrs) {
+            if (attr_name == attr.name) attrs.emplace_back(attr);
+        }
+    }
 };
 
 // INLJoin ===================================================================
 
 INLJoin::INLJoin(Iterator* leftIn_, IndexScan* rightIn_, const Condition& condition_)
     : leftIn(leftIn_), rightIn(rightIn_), condition(condition_) {
+    leftIn->getAttributes(left_attrs);
+    rightIn->getAttributes(right_attrs);
+
+    //Output attrs is concatenation of inputs
+    //     output_attrs = left_attrs;
+    //     output_attrs.insert(output_attrs.end(), right_attrs.begin(), right_attrs.end());
 }
