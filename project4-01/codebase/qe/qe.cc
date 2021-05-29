@@ -111,7 +111,7 @@ Value Tuple::getValue(const string& attr_name) const {
     }
 
     //Invalid attribute name
-    return {AttrType::TypeInt, NULL};
+    return {.data = NULL};
 }
 
 // Tuple::Builder ============================================================
@@ -151,8 +151,7 @@ Filter::Filter(Iterator* input_, const Condition& condition_) : input(input_), c
 
 RC Filter::getNextTuple(void* data) {
     do {
-        auto ret = input->getNextTuple(data);
-        if (ret != SUCCESS) return QE_EOF;
+        if (input->getNextTuple(data) != SUCCESS) return QE_EOF;
     } while (!isFilteredTuple(data));
 
     return SUCCESS;
@@ -176,12 +175,11 @@ void Filter::getAttributes(vector<Attribute>& attrs_) const {
 
 Project::Project(Iterator* input_, const vector<string>& attrNames) : input(input_), output_attrs(attrNames) {
     input->getAttributes(input_attrs);
+    source = Tuple(buffer, input_attrs);
 }
 
 RC Project::getNextTuple(void* data) {
-    auto ret = input->getNextTuple(buffer);
-    if (ret != SUCCESS) return QE_EOF;
-    Tuple source(buffer, input_attrs);
+    if (input->getNextTuple(buffer) != SUCCESS) return QE_EOF;
 
     //Build new tuple with projected attributes
     Tuple::Builder projection = Tuple::build(static_cast<char*>(data), output_attrs.size());
@@ -205,7 +203,44 @@ INLJoin::INLJoin(Iterator* leftIn_, IndexScan* rightIn_, const Condition& condit
     leftIn->getAttributes(left_attrs);
     rightIn->getAttributes(right_attrs);
 
+    left_tuple = Tuple(NULL);  //Left tuple is initially null
+    right_tuple = Tuple(right_buffer, right_attrs);
+}
+
+RC INLJoin::getNextTuple(void* data) {
+    //getNextTuple is being called for the first time
+    if (left_tuple.data == NULL) {
+        left_tuple = Tuple(left_buffer, left_attrs);
+        if (getNextOuterTuple() != SUCCESS) return QE_EOF;
+    }
+
+    //Get next inner tuple
+    while (rightIn->getNextTuple(right_buffer) != SUCCESS) {
+        if (getNextOuterTuple() != SUCCESS) return QE_EOF;
+    }
+
+    //Build result tuple
+    Tuple::Builder result = Tuple::build(static_cast<char*>(data), left_attrs.size() + right_attrs.size());
+    for (const Attribute& attr : left_attrs) result.appendValue(left_tuple.getValue(attr.name), attr.name);
+    for (const Attribute& attr : right_attrs) result.appendValue(right_tuple.getValue(attr.name), attr.name);
+
+    return SUCCESS;
+}
+
+//Get next tuple from outer (left) input
+RC INLJoin::getNextOuterTuple() {
+    if (leftIn->getNextTuple(left_buffer) != SUCCESS) return QE_EOF;
+    Value lhs = left_tuple.getValue(condition.lhsAttr);
+
+    //Only handling EQ_OP
+    rightIn->setIterator(lhs.data, lhs.data, true, true);
+    return SUCCESS;
+}
+
+void INLJoin::getAttributes(vector<Attribute>& attrs) const {
+    attrs.clear();
+
     //Output attrs is concatenation of inputs
-    //     output_attrs = left_attrs;
-    //     output_attrs.insert(output_attrs.end(), right_attrs.begin(), right_attrs.end());
+    attrs.insert(attrs.end(), left_attrs.begin(), left_attrs.end());
+    attrs.insert(attrs.end(), right_attrs.begin(), right_attrs.end());
 }

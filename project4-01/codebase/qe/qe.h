@@ -72,14 +72,13 @@ class Tuple {
         Builder(char *data_, size_t num_attrs_);
     };
 
-    Tuple(char *data_, const vector<Attribute> attrs_) : attrs(attrs_), data(data_) {}
+    Tuple(char *data_ = NULL, vector<Attribute> attrs_ = {}) : attrs(attrs_), data(data_) {}
     Value getValue(const string &attr_name) const;
 
     //Return a new Tuple::Builder
     static Builder build(char *data_, size_t num_attrs_) { return Builder(data_, num_attrs_); };
 
-   private:
-    const vector<Attribute> attrs;
+    vector<Attribute> attrs;
     char *data;
 
     bool isNull(size_t index) const {
@@ -244,6 +243,8 @@ class Project : public Iterator {
     const vector<string> &output_attrs;
     char buffer[PAGE_SIZE];  //Buffer for parsing tuples
 
+    Tuple source;
+
     Project(Iterator *input_,                  // Iterator of input R
             const vector<string> &attrNames);  // vector containing attribute names
     ~Project(){};
@@ -259,11 +260,17 @@ class INLJoin : public Iterator {
     Iterator *leftIn;
     IndexScan *rightIn;
     const Condition &condition;
-    char buffer[PAGE_SIZE];  //Buffer for parsing tuples
+
+    //Current lhs value for comparisions
+    Value lhs;
 
     vector<Attribute> left_attrs;
     vector<Attribute> right_attrs;
-    vector<Attribute> output_attrs;
+    char left_buffer[PAGE_SIZE];  //Buffer for parsing tuples
+    char right_buffer[PAGE_SIZE];
+
+    Tuple left_tuple;
+    Tuple right_tuple;
 
     INLJoin(Iterator *leftIn_,           // Iterator of input R
             IndexScan *rightIn_,         // IndexScan Iterator of input S
@@ -271,9 +278,12 @@ class INLJoin : public Iterator {
     );
     ~INLJoin(){};
 
-    RC getNextTuple(void *data) { return QE_EOF; };
+    RC getNextTuple(void *data);
     // For attribute in vector<Attribute>, name it as rel.attr
-    void getAttributes(vector<Attribute> &attrs) const {};
+    void getAttributes(vector<Attribute> &attrs) const;
+
+   private:
+    RC getNextOuterTuple();
 };
 
 #endif
