@@ -6,8 +6,13 @@
 // Value =====================================================================
 
 //Compare two values with given operation
-bool Value::compare(CompOp op, Value other) {
+bool Value::compare(CompOp op, const Value& other) const {
     if (type != other.type) return false;
+
+    //Null values can only be compared for equality
+    if (data == NULL || other.data == NULL) {
+        return (data == NULL && other.data == NULL && op == EQ_OP);
+    }
 
     switch (type) {
         case AttrType::TypeInt: {
@@ -41,7 +46,7 @@ bool Value::compare(CompOp op, Value other) {
 
 //Get functor for operation type
 template <typename t>
-function<bool(t, t)> Value::getOperator(CompOp op) {
+function<bool(t, t)> Value::getOperator(CompOp op) const {
     switch (op) {
         case EQ_OP:
             return [](t lhs, t rhs) { return lhs == rhs };
@@ -64,7 +69,7 @@ function<bool(t, t)> Value::getOperator(CompOp op) {
 // Tuple =====================================================================
 
 //Get given attribute from tuple
-Value Tuple::getAttr(const string& attr_name) {
+Value Tuple::getValue(const string& attr_name) const {
     char* curr_data = data + static_cast<size_t>(ceil(attrs.size() / double(CHAR_BIT)));
 
     for (size_t i = 0; i < attrs.size(); i++) {
@@ -93,6 +98,25 @@ Value Tuple::getAttr(const string& attr_name) {
     return {AttrType::TypeInt, NULL};
 }
 
+// Tuple::Builder ============================================================
+
+Tuple::Builder::Builder(char* data_, size_t num_attrs_) : num_attrs(num_attrs_), data(data_) {
+    data_end = data + static_cast<size_t>(ceil(num_attrs / double(CHAR_BIT)));
+}
+
+//Build tuple if all attributes are set
+Tuple Tuple::Builder::getTuple() const {
+    return (num_attrs == attrs.size()) ? Tuple(data, attrs) : Tuple(data, {});
+}
+
+//Append a given value to the builder
+void Tuple::Builder::appendValue(const Value& v, const string& attr_name) {
+    size_t index = attrs.size();
+    attrs.emplace_back(v.type, attr_name);
+
+    // *(data + (index / CHAR_BIT)) = *data | (v.data == NULL) << (index % CHAR_BIT);
+}
+
 // Filter ====================================================================
 
 Filter::Filter(Iterator* input_, const Condition& condition_) : input(input_), condition(condition_) {
@@ -110,9 +134,36 @@ RC Filter::getNextTuple(void* data) {
 
 //Check if tuple is included in filter
 bool Filter::isFilteredTuple(void* data) {
-    Tuple t(attrs, static_cast<char*>(data));
-    Value v = t.getAttr(condition.lhsAttr);
+    Tuple t(static_cast<char*>(data), attrs);
+    Value v = t.getValue(condition.lhsAttr);
+
+    // condition.bRhsIsAttr assumed to be false
     return v.compare(condition.op, condition.rhsValue);
 }
 
-// ... the rest of your implementations go here
+void Filter::getAttributes(vector<Attribute>& attrs_) const {
+    attrs_.clear();
+    attrs_.emplace_back(attrs);
+};
+
+// Project ===================================================================
+
+Project::Project(Iterator* input_, const vector<string>& attrNames) : input(input_), output_attrs(attrNames) {
+    input->getAttributes(input_attrs);
+}
+
+RC Project::getNextTuple(void* data) {
+    auto ret = input->getNextTuple(buffer);
+    if (ret != SUCCESS) return QE_EOF;
+    Tuple source(buffer, input_attrs);
+
+    //Build new tuple with projected attributes
+    Tuple::Builder projection = Tuple::build(static_cast<char*>(data), output_attrs.size());
+    for (const string& attr : output_attrs) projection.appendValue(source.getValue(attr), attr);
+    return SUCCESS;
+}
+
+void Project::getAttributes(vector<Attribute>& attrs_) const {
+    attrs_.clear();
+    attrs_.emplace_back(output_attrs);
+};

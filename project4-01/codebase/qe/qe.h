@@ -29,11 +29,11 @@ struct Value {
     AttrType type;  // type of value
     void *data;     // value
 
-    bool compare(CompOp op, Value other);
+    bool compare(CompOp op, const Value &other) const;
 
    private:
     template <typename t>
-    function<bool(t, t)> getOperator(CompOp op);
+    function<bool(t, t)> getOperator(CompOp op) const;
 };
 
 struct Condition {
@@ -55,13 +55,34 @@ class Iterator {
 //Represent an iterator tuple
 class Tuple {
    public:
-    vector<Attribute> &attrs;
+    //Class for building a Tuple by appending values
+    class Builder {
+       public:
+        Tuple getTuple() const;
+        void appendValue(const Value &v, const string &attr_name);
+
+       private:
+        vector<Attribute> attrs;
+        const size_t num_attrs;
+
+        char *data;
+        char *data_end;
+
+        friend class Tuple;
+        Builder(char *data_, size_t num_attrs_);
+    };
+
+    Tuple(char *data_, const vector<Attribute> attrs_) : attrs(attrs_), data(data_) {}
+    Value getValue(const string &attr_name) const;
+
+    //Return a new Tuple::Builder
+    static Builder build(char *data_, size_t num_attrs_) { return Builder(data_, num_attrs_); };
+
+   private:
+    const vector<Attribute> attrs;
     char *data;
 
-    Tuple(vector<Attribute> &attrs_, char *data_) : attrs(attrs_), data(data_) {}
-
-    Value getAttr(const string &attr_name);
-    bool isNull(size_t index) { return (*(data + (index / CHAR_BIT)) << (index % CHAR_BIT)) & 0x8; }  //Is attribute null at index?
+    bool isNull(size_t index) const { return (*(data + (index / CHAR_BIT)) << (index % CHAR_BIT)) & 0x8; }  //Is attribute null at index?
 };
 
 class TableScan : public Iterator {
@@ -207,7 +228,7 @@ class Filter : public Iterator {
 
     RC getNextTuple(void *data);
     // For attribute in vector<Attribute>, name it as rel.attr
-    void getAttributes(vector<Attribute> &attrs) const {};
+    void getAttributes(vector<Attribute> &attrs_) const;
 
    private:
     bool isFilteredTuple(void *data);
@@ -216,13 +237,18 @@ class Filter : public Iterator {
 class Project : public Iterator {
     // Projection operator
    public:
-    Project(Iterator *input,                     // Iterator of input R
-            const vector<string> &attrNames){};  // vector containing attribute names
+    Iterator *input;
+    vector<Attribute> input_attrs;
+    const vector<string> &output_attrs;
+    char buffer[PAGE_SIZE];  //Buffer for parsing tuples
+
+    Project(Iterator *input_,                  // Iterator of input R
+            const vector<string> &attrNames);  // vector containing attribute names
     ~Project(){};
 
     RC getNextTuple(void *data) { return QE_EOF; };
     // For attribute in vector<Attribute>, name it as rel.attr
-    void getAttributes(vector<Attribute> &attrs) const {};
+    void getAttributes(vector<Attribute> &attrs_) const;
 };
 
 class INLJoin : public Iterator {
