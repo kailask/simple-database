@@ -6,10 +6,12 @@
 #include <vector>
 
 #include "../rbf/rbfm.h"
+#include "../ix/ix.h"
 
 using namespace std;
 
 #define TABLE_FILE_EXTENSION ".t"
+#define INDEX_FILE_EXTENSION ".ix"
 
 #define TABLES_TABLE_NAME "Tables"
 #define TABLES_TABLE_ID 1
@@ -155,6 +157,7 @@ class RelationManager {
     // Convert tableName to file name (append extension)
     static string getFileName(const char *tableName);
     static string getFileName(const string &tableName);
+    static string getIndexName(const string &tableName, const string &attrName);
 
     // Create recordDescriptor for Table/Column tables
     static vector<Attribute> createTableDescriptor();
@@ -164,7 +167,7 @@ class RelationManager {
     // Prepare an entry for the Table/Column table
     void prepareTablesRecordData(int32_t id, bool system, const string &tableName, void *data);
     void prepareColumnsRecordData(int32_t id, int32_t pos, Attribute attr, void *data);
-    void prepareIndexesRecordData(const string &tableName, const string &attrName, const string &fileName, void *data);
+    void prepareIndexesRecordData(const string &tableName, const string &attrName, void *data);
 
 
     // Given a table ID and recordDescriptor, creates entries in Column table
