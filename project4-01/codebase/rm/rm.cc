@@ -379,18 +379,10 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
     rbfm->closeFile(fileHandle);
 
     //extension
-    IndexManager *im = IndexManager::instance();
-    FileHandle fh;
-    rc = rbfm->openFile(getFileName(INDEXES_TABLE_NAME), fh);
+    rc = deleteExtension(record, recordDescriptor, tableName, rid);
     if (rc) return rc;
-    int numAttributes = recordDescriptor.size();
-    ssize_t nullByteSize = rbfm->getNullIndicatorSize(numAttributes);
-    char nullBits[nullByteSize];
-    memset(nullBits, 0, nullByteSize);
-    memcpy(nullBits, record, nullByteSize);
-    unsigned offset = nullByteSize;
 
-    return rc;
+    return insertExtension(const_cast<void*>(data), recordDescriptor, tableName, const_cast<RID&>(rid));
 }
 
 RC RelationManager::readTuple(const string &tableName, const RID &rid, void *data) {
@@ -527,16 +519,6 @@ RC RelationManager::destroyIndex(const string &tableName, const string &attribut
     rbfm_si.close();
 
     return SUCCESS;
-}
-
-RC RelationManager::indexScan(const string &tableName,
-                              const string &attributeName,
-                              const void *lowKey,
-                              const void *highKey,
-                              bool lowKeyInclusive,
-                              bool highKeyInclusive,
-                              RM_IndexScanIterator &rm_IndexScanIterator) {
-    return -1;
 }
 
 string RelationManager::getFileName(const char *tableName) {
@@ -1161,5 +1143,50 @@ RC RM_ScanIterator::close() {
     RecordBasedFileManager *rbfm = RecordBasedFileManager::instance();
     rbfm_iter.close();
     rbfm->closeFile(fileHandle);
+    return SUCCESS;
+}
+
+//RM_IndexScanIterator
+RC RelationManager::indexScan(const string &tableName,
+                 const string &attributeName,
+                 const void *lowKey,
+                 const void *highKey,
+                 bool lowKeyInclusive,
+                 bool highKeyInclusive,
+                 RM_IndexScanIterator &rm_IndexScanIterator) {
+    //open index file
+    IndexManager *im = IndexManager::instance();
+    RC rc = im->openFile(getIndexName(tableName, attributeName), rm_IndexScanIterator.ix);
+    if (rc) return rc;
+
+    //get attributes
+    vector<Attribute> recordDescriptor;
+    rc = getAttributes(tableName, recordDescriptor);
+    if (rc)
+        return rc;
+
+    //iterate until you find attribute that matches the attributeName
+    for(ssize_t i = 0; i < recordDescriptor.size(); i++) {
+        if(recordDescriptor[i].name == attributeName) {
+            rc = im->scan(rm_IndexScanIterator.ix, recordDescriptor[i], lowKey, highKey, lowKeyInclusive, highKeyInclusive, rm_IndexScanIterator.ix_iter);
+            break;
+        }
+    }
+
+    if (rc)
+        return rc;
+
+    return SUCCESS;
+
+}
+
+RC RM_IndexScanIterator::getNextEntry(RID &rid, void* key) {
+    return ix_iter.getNextEntry(rid, key);
+}
+
+RC RM_IndexScanIterator::close() {
+    IndexManager *im = IndexManager::instance();
+    ix_iter.close();
+    im->closeFile(ix);
     return SUCCESS;
 }
