@@ -240,7 +240,6 @@ private:
   unsigned getPageFreeSpaceSize(void * page);
   unsigned getRecordSize(const vector<Attribute> &recordDescriptor, const void *data);
 
-  int getNullIndicatorSize(int fieldCount);
   bool fieldIsNull(char *nullIndicator, int i);
 
   void setRecordAtOffset(void *page, unsigned offset, const vector<Attribute> &recordDescriptor, const void *data);
