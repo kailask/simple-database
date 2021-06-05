@@ -460,7 +460,7 @@ RC RelationManager::createIndex(const string &tableName, const string &attribute
 
     //get the type of the attribute
     Attribute attr;
-    for (ssize_t i = 0; i < recordDescriptor.size(); i++) {
+    for (unsigned i = 0; i < recordDescriptor.size(); i++) {
         if (recordDescriptor[i].name == attributeName) {
             attr = recordDescriptor[i];
             break;
@@ -808,23 +808,25 @@ RC RelationManager::insertExtension(void *data, vector<Attribute> &recordDescrip
 
             //use a switch statment to figure out the type of key to insert and adjust offset
             switch (recordDescriptor[i].type) {
-                case TypeInt:
+                case TypeInt: {
                     void *key = malloc(INT_SIZE);
                     memcpy(key, static_cast<const char *>(data) + offset, INT_SIZE);
                     rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
                     free(key);
                     offset += INT_SIZE;
                     break;
+                }
 
-                case TypeReal:
+                case TypeReal: {
                     void *key = malloc(REAL_SIZE);
                     memcpy(key, static_cast<const char *>(data) + offset, REAL_SIZE);
                     rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
                     free(key);
                     offset += REAL_SIZE;
                     break;
+                }
 
-                case TypeVarChar:
+                case TypeVarChar: {
                     int varcharSize;
                     memcpy(&varcharSize, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE);
                     void *key = malloc(VARCHAR_LENGTH_SIZE + varcharSize);
@@ -833,6 +835,7 @@ RC RelationManager::insertExtension(void *data, vector<Attribute> &recordDescrip
                     free(key);
                     offset += VARCHAR_LENGTH_SIZE + varcharSize;
                     break;
+                }
             }
             rc = im->closeFile(ix);
             if(rc) return rc;
@@ -876,23 +879,25 @@ RC RelationManager::deleteExtension(void *data, vector<Attribute> &recordDescrip
 
             //use a switch statment to figure out the type of key to delete and adjust offset
             switch (recordDescriptor[i].type) {
-                case TypeInt:
+                case TypeInt: {
                     void *key = malloc(INT_SIZE);
                     memcpy(key, static_cast<const char *>(data) + offset, INT_SIZE);
                     rc = im->deleteEntry(ix, recordDescriptor[i], key, rid);
                     free(key);
                     offset += INT_SIZE;
                     break;
+                }
 
-                case TypeReal:
+                case TypeReal: {
                     void *key = malloc(REAL_SIZE);
                     memcpy(key, static_cast<const char *>(data) + offset, REAL_SIZE);
                     rc = im->deleteEntry(ix, recordDescriptor[i], key, rid);
                     free(key);
                     offset += REAL_SIZE;
                     break;
+                }
 
-                case TypeVarChar:
+                case TypeVarChar: {
                     int varcharSize;
                     memcpy(&varcharSize, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE);
                     void *key = malloc(VARCHAR_LENGTH_SIZE + varcharSize);
@@ -901,6 +906,7 @@ RC RelationManager::deleteExtension(void *data, vector<Attribute> &recordDescrip
                     free(key);
                     offset += VARCHAR_LENGTH_SIZE + varcharSize;
                     break;
+                }
             }
             //close indesx file
             rc = im->closeFile(ix);
@@ -1166,7 +1172,7 @@ RC RelationManager::indexScan(const string &tableName,
         return rc;
 
     //iterate until you find attribute that matches the attributeName
-    for(ssize_t i = 0; i < recordDescriptor.size(); i++) {
+    for(unsigned i = 0; i < recordDescriptor.size(); i++) {
         if(recordDescriptor[i].name == attributeName) {
             rc = im->scan(rm_IndexScanIterator.ix, recordDescriptor[i], lowKey, highKey, lowKeyInclusive, highKeyInclusive, rm_IndexScanIterator.ix_iter);
             break;
