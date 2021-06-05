@@ -5,8 +5,8 @@
 #include <string>
 #include <vector>
 
-#include "../rbf/rbfm.h"
 #include "../ix/ix.h"
+#include "../rbf/rbfm.h"
 
 using namespace std;
 
@@ -169,7 +169,6 @@ class RelationManager {
     void prepareColumnsRecordData(int32_t id, int32_t pos, Attribute attr, void *data);
     void prepareIndexesRecordData(const string &tableName, const string &attrName, void *data);
 
-
     // Given a table ID and recordDescriptor, creates entries in Column table
     RC insertColumns(int32_t id, const vector<Attribute> &recordDescriptor);
     // Given table ID, system flag, and table name, creates entry in Table table
@@ -184,6 +183,8 @@ class RelationManager {
 
     //private extension functions
     RC insertIndex(const string &tableName, const string &attributeName);
+    RC insertExtension(void *data, vector<Attribute> &recordDescriptor, const string &tableName, RID &rid);
+    RC deleteExtension(void *data, vector<Attribute> &recordDescriptor, const string &tableName, const RID &rid);
 
     // Utility functions for converting single values to/from api format
     // Useful when using ScanIterators

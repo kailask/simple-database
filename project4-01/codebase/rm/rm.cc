@@ -306,74 +306,7 @@ RC RelationManager::insertTuple(const string &tableName, const void *data, RID &
     rbfm->closeFile(fileHandle);
 
     //extension
-    IndexManager *im = IndexManager::instance();
-    FileHandle fh;
-    rc = rbfm->openFile(getFileName(INDEXES_TABLE_NAME), fh);
-    if (rc) return rc;
-    int numAttributes = recordDescriptor.size();
-    ssize_t nullByteSize = rbfm->getNullIndicatorSize(numAttributes);
-    char nullBits[nullByteSize];
-    memset(nullBits, 0, nullByteSize);
-    memcpy(nullBits, data, nullByteSize);
-    unsigned offset = nullByteSize;
-
-    for (int i = 0; i < numAttributes; i++) {
-        //skip if attribute is null
-        int indicatorIndex = i / CHAR_BIT;
-        int indicatorMask = 1 << (CHAR_BIT - 1 - (i % CHAR_BIT));
-        if ((nullBits[indicatorIndex] & indicatorMask) != 0) continue;
-
-        //if an index pertaining to the attribute exists, then insertEntry
-        RBFM_ScanIterator rbfm_si;
-        vector<string> projection;
-        rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, getIndexName(tableName, recordDescriptor[i].name).c_str(), projection, rbfm_si);
-
-        RID scanRID;
-        rc = rbfm_si.getNextRecord(scanRID, NULL);
-
-        if (rc == SUCCESS) {
-            IXFileHandle ix;
-            rc = im->openFile(getIndexName(tableName, recordDescriptor[i].name), ix);
-
-            //use a switch statment to figure out the type of key to insert and adjust offset
-            switch (recordDescriptor[i].type) {
-                case TypeInt:
-                    void *key = malloc(INT_SIZE);
-                    memcpy(key, static_cast<const char *>(data) + offset, INT_SIZE);
-                    rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
-                    free(key);
-                    offset += INT_SIZE;
-                    break;
-
-                case TypeReal:
-                    void *key = malloc(REAL_SIZE);
-                    memcpy(key, static_cast<const char *>(data) + offset, INT_SIZE);
-                    rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
-                    free(key);
-                    offset += REAL_SIZE;
-                    break;
-
-                case TypeVarChar:
-                    int varcharSize;
-                    memcpy(&varcharSize, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE);
-                    void *key = malloc(VARCHAR_LENGTH_SIZE + varcharSize);
-                    memcpy(key, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE + varcharSize);
-                    rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
-                    free(key);
-                    offset += VARCHAR_LENGTH_SIZE + varcharSize;
-                    break;
-            }
-            rc = im->closeFile(ix);
-            if(rc) return rc;
-        }
-
-        //close scanner
-        rbfm_si.close();
-    }
-
-    //close index catalog
-    rbfm->closeFile(fh);
-    return rc;
+    return insertExtension(const_cast<void*>(data), recordDescriptor, tableName, rid);
 }
 
 RC RelationManager::deleteTuple(const string &tableName, const RID &rid) {
@@ -394,17 +327,23 @@ RC RelationManager::deleteTuple(const string &tableName, const RID &rid) {
     if (rc)
         return rc;
 
+
     // And get fileHandle
     FileHandle fileHandle;
     rc = rbfm->openFile(getFileName(tableName), fileHandle);
     if (rc)
         return rc;
 
+    //read record in order to delete search keys in the index
+    char record[PAGE_SIZE];
+    rbfm->readRecord(fileHandle, recordDescriptor, rid, record);
+
     // Let rbfm do all the work
     rc = rbfm->deleteRecord(fileHandle, recordDescriptor, rid);
     rbfm->closeFile(fileHandle);
 
-    return rc;
+    //extension
+    return deleteExtension(record, recordDescriptor, tableName, rid);
 }
 
 RC RelationManager::updateTuple(const string &tableName, const void *data, const RID &rid) {
@@ -431,9 +370,25 @@ RC RelationManager::updateTuple(const string &tableName, const void *data, const
     if (rc)
         return rc;
 
+    //read record in order to delete search keys in the index
+    char record[PAGE_SIZE];
+    rbfm->readRecord(fileHandle, recordDescriptor, rid, record);
+
     // Let rbfm do all the work
     rc = rbfm->updateRecord(fileHandle, recordDescriptor, data, rid);
     rbfm->closeFile(fileHandle);
+
+    //extension
+    IndexManager *im = IndexManager::instance();
+    FileHandle fh;
+    rc = rbfm->openFile(getFileName(INDEXES_TABLE_NAME), fh);
+    if (rc) return rc;
+    int numAttributes = recordDescriptor.size();
+    ssize_t nullByteSize = rbfm->getNullIndicatorSize(numAttributes);
+    char nullBits[nullByteSize];
+    memset(nullBits, 0, nullByteSize);
+    memcpy(nullBits, record, nullByteSize);
+    unsigned offset = nullByteSize;
 
     return rc;
 }
@@ -833,6 +788,149 @@ RC RelationManager::insertIndex(const string &tableName, const string &attribute
     rbfm->closeFile(fh);
     free(indexData);
     return SUCCESS;
+}
+
+//insertTuple extension
+RC RelationManager::insertExtension(void *data, vector<Attribute> &recordDescriptor, const string &tableName, RID &rid) {
+    IndexManager *im = IndexManager::instance();
+    RecordBasedFileManager *rbfm = RecordBasedFileManager::instance();
+    FileHandle fh;
+    RC rc;
+
+    rc = rbfm->openFile(getFileName(INDEXES_TABLE_NAME), fh);
+    if (rc) return rc;
+    int numAttributes = recordDescriptor.size();
+    ssize_t nullByteSize = rbfm->getNullIndicatorSize(numAttributes);
+    char nullBits[nullByteSize];
+    memset(nullBits, 0, nullByteSize);
+    memcpy(nullBits, data, nullByteSize);
+    unsigned offset = nullByteSize;
+
+    for (int i = 0; i < numAttributes; i++) {
+        //skip if attribute is null
+        int indicatorIndex = i / CHAR_BIT;
+        int indicatorMask = 1 << (CHAR_BIT - 1 - (i % CHAR_BIT));
+        if ((nullBits[indicatorIndex] & indicatorMask) != 0) continue;
+
+        //if an index pertaining to the attribute exists, then insertEntry
+        RBFM_ScanIterator rbfm_si;
+        vector<string> projection;
+        rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, getIndexName(tableName, recordDescriptor[i].name).c_str(), projection, rbfm_si);
+
+        RID scanRID;
+        rc = rbfm_si.getNextRecord(scanRID, NULL);
+
+        if (rc == SUCCESS) {
+            IXFileHandle ix;
+            rc = im->openFile(getIndexName(tableName, recordDescriptor[i].name), ix);
+
+            //use a switch statment to figure out the type of key to insert and adjust offset
+            switch (recordDescriptor[i].type) {
+                case TypeInt:
+                    void *key = malloc(INT_SIZE);
+                    memcpy(key, static_cast<const char *>(data) + offset, INT_SIZE);
+                    rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
+                    free(key);
+                    offset += INT_SIZE;
+                    break;
+
+                case TypeReal:
+                    void *key = malloc(REAL_SIZE);
+                    memcpy(key, static_cast<const char *>(data) + offset, REAL_SIZE);
+                    rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
+                    free(key);
+                    offset += REAL_SIZE;
+                    break;
+
+                case TypeVarChar:
+                    int varcharSize;
+                    memcpy(&varcharSize, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE);
+                    void *key = malloc(VARCHAR_LENGTH_SIZE + varcharSize);
+                    memcpy(key, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE + varcharSize);
+                    rc = im->insertEntry(ix, recordDescriptor[i], key, rid);
+                    free(key);
+                    offset += VARCHAR_LENGTH_SIZE + varcharSize;
+                    break;
+            }
+            rc = im->closeFile(ix);
+            if(rc) return rc;
+        }
+
+        //close scanner
+        rbfm_si.close();
+    }
+
+    //close index catalog
+    return rbfm->closeFile(fh);
+}
+
+RC RelationManager::deleteExtension(void *data, vector<Attribute> &recordDescriptor, const string &tableName, const RID &rid) {
+    IndexManager *im = IndexManager::instance();
+    RecordBasedFileManager *rbfm = RecordBasedFileManager::instance();
+    FileHandle fh;
+    RC rc;
+
+    rc = rbfm->openFile(getFileName(INDEXES_TABLE_NAME), fh);
+    if (rc) return rc;
+    int numAttributes = recordDescriptor.size();
+    ssize_t nullByteSize = rbfm->getNullIndicatorSize(numAttributes);
+    char nullBits[nullByteSize];
+    memset(nullBits, 0, nullByteSize);
+    memcpy(nullBits, data, nullByteSize);
+    unsigned offset = nullByteSize;
+
+    for(int i = 0; i < numAttributes; i++) {
+        //if an index pertaining to the attribute exists then deleteEntry
+        RBFM_ScanIterator rbfm_si;
+        vector<string> projection;
+        rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, getIndexName(tableName, recordDescriptor[i].name).c_str(), projection, rbfm_si);
+
+        RID scanRID;
+        rc = rbfm_si.getNextRecord(scanRID, NULL);
+
+        if (rc == SUCCESS) {
+            IXFileHandle ix;
+            rc = im->openFile(getIndexName(tableName, recordDescriptor[i].name), ix);
+
+            //use a switch statment to figure out the type of key to delete and adjust offset
+            switch (recordDescriptor[i].type) {
+                case TypeInt:
+                    void *key = malloc(INT_SIZE);
+                    memcpy(key, static_cast<const char *>(data) + offset, INT_SIZE);
+                    rc = im->deleteEntry(ix, recordDescriptor[i], key, rid);
+                    free(key);
+                    offset += INT_SIZE;
+                    break;
+
+                case TypeReal:
+                    void *key = malloc(REAL_SIZE);
+                    memcpy(key, static_cast<const char *>(data) + offset, REAL_SIZE);
+                    rc = im->deleteEntry(ix, recordDescriptor[i], key, rid);
+                    free(key);
+                    offset += REAL_SIZE;
+                    break;
+
+                case TypeVarChar:
+                    int varcharSize;
+                    memcpy(&varcharSize, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE);
+                    void *key = malloc(VARCHAR_LENGTH_SIZE + varcharSize);
+                    memcpy(key, static_cast<const char *>(data) + offset, VARCHAR_LENGTH_SIZE + varcharSize);
+                    rc = im->deleteEntry(ix, recordDescriptor[i], key, rid);
+                    free(key);
+                    offset += VARCHAR_LENGTH_SIZE + varcharSize;
+                    break;
+            }
+            //close indesx file
+            rc = im->closeFile(ix);
+            if(rc) return rc;
+        }
+
+        //close scanner
+        rbfm_si.close();
+    }
+
+    //close index catalog
+    return rbfm->closeFile(fh);
 }
 
 // Get the next table ID for creating a table
