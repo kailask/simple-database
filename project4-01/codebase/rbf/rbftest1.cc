@@ -26,7 +26,7 @@ int RBFTest_1(PagedFileManager *pfm)
     rc = pfm->createFile(fileName);
     assert(rc == success && "Creating the file failed.");
 
-	rc = createFileShouldSucceed(fileName);
+    rc = createFileShouldSucceed(fileName);
     assert(rc == success && "Creating the file failed.");
 
     // Create "test" again, should fail
@@ -39,7 +39,7 @@ int RBFTest_1(PagedFileManager *pfm)
 
 int main()
 {
-	// To test the functionality of the paged file manager
+    // To test the functionality of the paged file manager
     PagedFileManager *pfm = PagedFileManager::instance();
     
     // Remove files that might be created by previous test run

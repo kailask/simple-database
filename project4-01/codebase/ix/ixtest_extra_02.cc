@@ -19,18 +19,18 @@ void prepareKeyAndRid(const unsigned count, const unsigned i, char* key, RID &ri
     rid.slotNum = i;
 }
 
-int testCase_14(const string &indexFileName,
+int testCase_extra_2(const string &indexFileName,
         const Attribute &attribute){
-    // Checks whether the insertion is implemented correctly (split should happen)
+    // Checks whether the deletion is properly managed (non-lazy deletion)
     // Functions tested
     // 1. CreateIndex
     // 2. OpenIndex
-    // 3. Insert entries to make root full
+    // 3. Insert entries to make a 3 level tree 
     // 4. Print BTree 
-    // 5. Insert one more entries to watch the shape of the BTree
+    // 5. Delete the "unsafe one" 
     // 6. CloseIndex
     // 7. DestroyIndex
-    cerr << endl << "***** In IX Test Case 14 *****" << endl;
+    cerr << endl << "***** In IX Test Case 2 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
@@ -47,27 +47,27 @@ int testCase_14(const string &indexFileName,
     rc = indexManager->openFile(indexFileName, ixfileHandle);
     assert(rc == success && "indexManager::openFile() should not fail.");
 
-    // insert entry
+    // insert entries
     unsigned i = 1;
     for(; i <= numOfTuples; i++)
     {
-        // Prepare a key
         prepareKeyAndRid(count, i, key, rid);
 
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
-
-        if (i == 5) {
-            // print BTree, by this time the BTree should have 2 level - one root (c*) with two leaf nodes (a*b*, c*d*e*)
-            cerr << endl;
-            indexManager->printBtree(ixfileHandle, attribute);
-            cerr << endl;
-        }
     }
 
-
     // print BTree, by this time the BTree should have 3 level
-    cerr << endl << endl << "////////////////////////////" << endl << endl;
+    indexManager->printBtree(ixfileHandle, attribute);
+
+    // delete the 2nd entry
+    prepareKeyAndRid(count, 2, key, rid);
+    rc = indexManager->deleteEntry(ixfileHandle, attribute, key, rid);
+    assert(rc == success && "indexManager::deleteEntry() should not fail.");
+
+    cerr << endl << endl << "/////////////////" << endl << endl;
+
+    // print BTree, by this time the BTree should have 2 level
     indexManager->printBtree(ixfileHandle, attribute);
     cerr << endl;
 
@@ -91,18 +91,18 @@ int main()
     const string indexEmpNameFileName = "EmpName_idx";
 
     Attribute attrEmpName;
-    attrEmpName.length = PAGE_SIZE / 5;  // each node can only occupy 4 keys
+    attrEmpName.length = PAGE_SIZE / 5;  // Each node could only have 4 children
     attrEmpName.name = "EmpName";
     attrEmpName.type = TypeVarChar;
 
     remove("EmpName_idx");
 
-    RC result = testCase_14(indexEmpNameFileName, attrEmpName);
+    RC result = testCase_extra_2(indexEmpNameFileName, attrEmpName);
     if (result == success) {
-        cerr << "***** IX Test Case 14 finished. Please check the shape of the B+ Tree. *****" << endl;
+        cerr << "IX_Test Case Extra 2 finished. Please check the shape of B+ Tree to make sure non lazy-deletion is applied." << endl;
         return success;
     } else {
-        cerr << "***** [FAIL] IX Test Case 14 failed. *****" << endl;
+        cerr << "IX_Test Case Extra 2 failed." << endl;
         return fail;
     }
 

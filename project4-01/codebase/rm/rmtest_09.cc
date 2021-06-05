@@ -8,8 +8,8 @@ RC TEST_RM_09(const string &tableName, vector<RID> &rids, vector<int> &sizes)
 
     int size = 0;
     int numTuples = 2000;
-    void *tuple = malloc(2000);
-    void *returnedData = malloc(2000);
+    void *tuple = malloc(4000);
+    void *returnedData = malloc(4000);
     
     // read the saved rids and the sizes of records
     readRIDsFromDisk(rids, numTuples);
@@ -26,8 +26,8 @@ RC TEST_RM_09(const string &tableName, vector<RID> &rids, vector<int> &sizes)
 
     for(int i = 0; i < numTuples; i++)
     {
-        memset(tuple, 0, 2000);
-        memset(returnedData, 0, 2000);
+        memset(tuple, 0, 4000);
+        memset(returnedData, 0, 4000);
         rc = rm->readTuple(tableName, rids[i], returnedData);
         assert(rc == success && "RelationManager::readTuple() should not fail.");
 

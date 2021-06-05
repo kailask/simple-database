@@ -29,7 +29,7 @@ int RBFTest_3(PagedFileManager *pfm)
     rc = pfm->createFile(fileName);
     assert(rc == success && "Creating the file should not fail.");
 
-	rc = createFileShouldSucceed(fileName);
+    rc = createFileShouldSucceed(fileName);
     assert(rc == success && "Creating the file should not fail.");
 
     // Open the file
@@ -52,7 +52,7 @@ int RBFTest_3(PagedFileManager *pfm)
 
 int main()
 {
-	// To test the functionality of the paged file manager
+    // To test the functionality of the paged file manager
     PagedFileManager *pfm = PagedFileManager::instance();
     
     remove("test3");

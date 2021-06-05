@@ -33,7 +33,7 @@ RC TEST_RM_13(const string &tableName)
         // Insert Tuple
         float height = (float)i;
 
-        age = (rand()%20) + 15;
+        age = (rand()%10) + 23;
 
         prepareTuple(attrs.size(), nullsIndicator, 6, "Tester", age, height, 123, tuple, &tupleSize);
         rc = rm->insertTuple(tableName, tuple, rid);

@@ -60,7 +60,7 @@ RC TEST_RM_1(const string &tableName, const int nameLength, const string &name, 
 int main()
 {
     // Insert/Read Tuple
-    RC rcmain = TEST_RM_1("tbl_employee", 8, "Anteater", 27, 6.2, 10000);
+    RC rcmain = TEST_RM_1("tbl_employee", 14, "Peter Anteater", 27, 6.2, 10000);
 
     return rcmain;
 }

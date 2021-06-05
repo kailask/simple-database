@@ -29,7 +29,7 @@ int RBFTest_9(RecordBasedFileManager *rbfm, vector<RID> &rids, vector<int> &size
     rc = rbfm->createFile(fileName);
     assert(rc == success && "Creating the file should not fail.");
 
-	rc = createFileShouldSucceed(fileName);
+    rc = createFileShouldSucceed(fileName);
     assert(rc == success && "Creating the file failed.");
 
     // Open the file "test9"
@@ -48,12 +48,12 @@ int RBFTest_9(RecordBasedFileManager *rbfm, vector<RID> &rids, vector<int> &size
     {
         cout << "Attr Name: " << recordDescriptor[i].name << " Attr Type: " << (AttrType)recordDescriptor[i].type << " Attr Len: " << recordDescriptor[i].length << endl;
     }
-	cout << endl;
-	
+    cout << endl;
+    
     // NULL field indicator
     int nullFieldsIndicatorActualSize = getActualByteForNullsIndicator(recordDescriptor.size());
     unsigned char *nullsIndicator = (unsigned char *) malloc(nullFieldsIndicatorActualSize);
-	memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
+    memset(nullsIndicator, 0, nullFieldsIndicatorActualSize);
 
     // Insert 2000 records into file
     for(int i = 0; i < numRecords; i++)
@@ -77,36 +77,36 @@ int RBFTest_9(RecordBasedFileManager *rbfm, vector<RID> &rids, vector<int> &size
     
     
     // Write RIDs to the disk. Do not use this code in your codebase. This is not a PAGE-BASED operation - for the test purpose only.
-	ofstream ridsFile("test9rids", ios::out | ios::trunc | ios::binary);
+    ofstream ridsFile("test9rids", ios::out | ios::trunc | ios::binary);
 
-	if (ridsFile.is_open()) {
-		ridsFile.seekp(0, ios::beg);
-		for (int i = 0; i < numRecords; i++) {
-			ridsFile.write(reinterpret_cast<const char*>(&rids[i].pageNum),
-					sizeof(unsigned));
-			ridsFile.write(reinterpret_cast<const char*>(&rids[i].slotNum),
-					sizeof(unsigned));
-			if (i % 1000 == 0) {
-				cout << "RID #" << i << ": " << rids[i].pageNum << ", "
-						<< rids[i].slotNum << endl;
-			}
-		}
-		ridsFile.close();
-	}
+    if (ridsFile.is_open()) {
+        ridsFile.seekp(0, ios::beg);
+        for (int i = 0; i < numRecords; i++) {
+            ridsFile.write(reinterpret_cast<const char*>(&rids[i].pageNum),
+                    sizeof(unsigned));
+            ridsFile.write(reinterpret_cast<const char*>(&rids[i].slotNum),
+                    sizeof(unsigned));
+            if (i % 1000 == 0) {
+                cout << "RID #" << i << ": " << rids[i].pageNum << ", "
+                        << rids[i].slotNum << endl;
+            }
+        }
+        ridsFile.close();
+    }
 
     // Write sizes vector to the disk. Do not use this code in your codebase. This is not a PAGE-BASED operation - for the test purpose only.
-	ofstream sizesFile("test9sizes", ios::out | ios::trunc | ios::binary);
+    ofstream sizesFile("test9sizes", ios::out | ios::trunc | ios::binary);
 
-	if (sizesFile.is_open()) {
-		sizesFile.seekp(0, ios::beg);
-		for (int i = 0; i < numRecords; i++) {
-			sizesFile.write(reinterpret_cast<const char*>(&sizes[i]),sizeof(int));
-			if (i % 1000 == 0) {
-				cout << "Sizes #" << i << ": " << sizes[i] << endl;
-			}
-		}
-		sizesFile.close();
-	}
+    if (sizesFile.is_open()) {
+        sizesFile.seekp(0, ios::beg);
+        for (int i = 0; i < numRecords; i++) {
+            sizesFile.write(reinterpret_cast<const char*>(&sizes[i]),sizeof(int));
+            if (i % 1000 == 0) {
+                cout << "Sizes #" << i << ": " << sizes[i] << endl;
+            }
+        }
+        sizesFile.close();
+    }
         
     cout << "RBF Test Case 9 Finished! The result will be examined." << endl << endl;
 

@@ -14,21 +14,22 @@ int testCase_10(const string &indexFileName, const Attribute &attribute)
     // Functions tested
     // 1. Create Index File
     // 2. Open Index File
-    // 3. Insert entry with the same key
-    // 4. Scan entries EXACT MATCH **
+    // 3. Insert entries with two different keys
+    // 4. Scan entries that match one of the keys **
     // 5. Scan close **
     // 6. Close Index File
     // NOTE: "**" signifies the new functions being tested in this test case.
-	cerr << endl << "***** In IX Test Case 10 *****" << endl;
+    cerr << endl << "***** In IX Test Case 10 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
     IX_ScanIterator ix_ScanIterator;
-    unsigned key = 200;
+    unsigned key1 = 200;
+    unsigned key2 = 500;
     unsigned numOfTuples = 50;
 
-    int inRidPageNumSum = 0;
-    int outRidPageNumSum = 0;
+    int inRidSlotNumSum = 0;
+    int outRidSlotNumSum = 0;
 
     // create index file
     RC rc = indexManager->createFile(indexFileName);
@@ -39,33 +40,39 @@ int testCase_10(const string &indexFileName, const Attribute &attribute)
     assert(rc == success && "indexManager::openFile() should not fail.");
 
     // insert entries
-    for(unsigned i = 0; i <= numOfTuples; i++)
+    for(unsigned i = 0; i <= numOfTuples / 2; i++)
     {
-        rid.pageNum = i+1;
-        rid.slotNum = i+2;
+        rid.pageNum = i + 1;
+        rid.slotNum = i + 2;
 
-        rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
+        rc = indexManager->insertEntry(ixfileHandle, attribute, &key1, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
-        inRidPageNumSum += rid.pageNum;
+        inRidSlotNumSum += rid.slotNum;
+        
+        rid.pageNum = i + 101;
+        rid.slotNum = i + 102;
+
+        rc = indexManager->insertEntry(ixfileHandle, attribute, &key2, rid);
+        assert(rc == success && "indexManager::insertEntry() should not fail.");
     }
 
     // Scan
-    rc = indexManager->scan(ixfileHandle, attribute, &key, &key, true, true, ix_ScanIterator);
+    rc = indexManager->scan(ixfileHandle, attribute, &key1, &key1, true, true, ix_ScanIterator);
     assert(rc == success && "indexManager::scan() should not fail.");
 
     // iterate
     unsigned count = 0;
-    while(ix_ScanIterator.getNextEntry(rid, &key) == success)
+    while(ix_ScanIterator.getNextEntry(rid, &key1) == success)
     {
-    	count++;
-    	if (count % 10 == 0) {
+        count++;
+        if (count % 10 == 0) {
             cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << endl;
-    	}
-        outRidPageNumSum += rid.pageNum;
+        }
+        outRidSlotNumSum += rid.slotNum;
     }
 
     // Inconsistency?
-    if (inRidPageNumSum != outRidPageNumSum)
+    if (inRidSlotNumSum != outRidSlotNumSum)
     {
         cerr << "Wrong entries output... The test failed" << endl;
         rc = ix_ScanIterator.close();

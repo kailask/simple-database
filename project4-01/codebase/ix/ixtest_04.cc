@@ -20,9 +20,9 @@ int testCase_4(const string &indexFileName, const Attribute &attribute)
     cerr << endl << "***** In IX Test Case 4 *****" << endl;
 
     RID rid;
-    int key = 100;
-    rid.pageNum = key;
-    rid.slotNum = key+1;
+    int key = 200;
+    rid.pageNum = 500;
+    rid.slotNum = 20;
 
     unsigned readPageCount = 0;
     unsigned writePageCount = 0;
@@ -33,8 +33,6 @@ int testCase_4(const string &indexFileName, const Attribute &attribute)
     unsigned readDiff = 0;
     unsigned writeDiff = 0;
     unsigned appendDiff = 0;
-
-    IX_ScanIterator ix_ScanIterator;
 
     // open index file
     IXFileHandle ixfileHandle;
@@ -57,17 +55,21 @@ int testCase_4(const string &indexFileName, const Attribute &attribute)
     cerr << "After DeleteEntry - R W A: " << readPageCountAfter << " " << writePageCountAfter << " " << appendPageCountAfter << endl;
 
     // collect counters
-	readDiff = readPageCountAfter - readPageCount;
-	writeDiff = writePageCountAfter - writePageCount;
-	appendDiff = appendPageCountAfter - appendPageCount;
+    readDiff = readPageCountAfter - readPageCount;
+    writeDiff = writePageCountAfter - writePageCount;
+    appendDiff = appendPageCountAfter - appendPageCount;
 
-	cerr << "Page I/O count of single deletion - R W A: " << readDiff << " " << writeDiff << " " << appendDiff << endl;
+    cerr << "Page I/O count of single deletion - R W A: " << readDiff << " " << writeDiff << " " << appendDiff << endl;
 
-	if (readDiff == 0 && writeDiff == 0 && appendDiff == 0) {
-		cerr << "Deletion should generate some page I/O. The implementation is not correct." << endl;
-		rc = indexManager->closeFile(ixfileHandle);
-		return fail;
-	}
+    if (readDiff == 0 && writeDiff == 0 && appendDiff == 0) {
+        cerr << "Deletion should generate some page I/O. The implementation is not correct." << endl;
+        rc = indexManager->closeFile(ixfileHandle);
+        return fail;
+    }
+    
+    // delete entry again - should fail
+    rc = indexManager->deleteEntry(ixfileHandle, attribute, &key, rid);
+    assert(rc != success && "indexManager::deleteEntry() should fail.");
 
     // close index file
     rc = indexManager->closeFile(ixfileHandle);

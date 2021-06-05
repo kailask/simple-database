@@ -23,15 +23,17 @@ int testCase_13(const string &indexFileName, const Attribute &attribute)
     // 7. Close Scan
     // 8. Close Index
     // 9. Destroy Index
-	cerr << endl << "***** In IX Test Case 13 *****" << endl;
+    cerr << endl << "***** In IX Test Case 13 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
     IX_ScanIterator ix_ScanIterator;
     unsigned offset;
-    unsigned numOfTuples = 5000;
+    unsigned numOfTuples = 1000;
+    unsigned numOfMoreTuples = 5;
     char key[100];
     unsigned count;
+    unsigned tested_ascii = 20;
 
     // create index file
     RC rc = indexManager->createFile(indexFileName);
@@ -46,11 +48,11 @@ int testCase_13(const string &indexFileName, const Attribute &attribute)
     // insert entries
     for(unsigned i = 1; i <= numOfTuples; i++)
     {
-        count = ((i-1) % 26) + 1;
+        count = ((i - 1) % 26) + 1;
         *(int *)key = count;
         for(unsigned j = 0; j < count; j++)
         {
-            *(key+4+j) = 96+count;
+            key[4 + j] = 'a' + count - 1;
         }
 
         rid.pageNum = i;
@@ -59,9 +61,25 @@ int testCase_13(const string &indexFileName, const Attribute &attribute)
         rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
         assert(rc == success && "indexManager::insertEntry() should not fail.");
 
-        if (count == 20) {
+        if (count == tested_ascii) {
             numOfTuplesTobeScanned++;
         }
+    }
+    
+    // insert more entries
+    *(int *)key = tested_ascii;
+    for (unsigned j = 0; j < tested_ascii; j++)
+    {
+        key[4 + j] = 'a' + tested_ascii - 1;
+    }
+    for (unsigned i = 1; i < numOfMoreTuples; i++){
+        rid.pageNum = 26 * (50 + i) + tested_ascii;
+        rid.slotNum = 26 * (50 + i) + tested_ascii;
+
+        rc = indexManager->insertEntry(ixfileHandle, attribute, &key, rid);
+        assert(rc == success && "indexManager::insertEntry() should not fail.");
+        
+        numOfTuplesTobeScanned++;
     }
 
     // collect counter
@@ -78,11 +96,11 @@ int testCase_13(const string &indexFileName, const Attribute &attribute)
         << " " << appendPageCount << endl;
 
     //scan
-    offset = 20;
+    offset = tested_ascii;
     *(int *)key = offset;
     for(unsigned j = 0; j < offset; j++)
     {
-        *(key+4+j) = 96+offset;
+        key[4 + j] = 'a' + offset - 1;
     }
 
     rc = indexManager->scan(ixfileHandle, attribute, &key, &key, true, true, ix_ScanIterator);
@@ -93,13 +111,13 @@ int testCase_13(const string &indexFileName, const Attribute &attribute)
     cerr << endl;
     while(ix_ScanIterator.getNextEntry(rid, &key) == success)
     {
-        if ( ((rid.pageNum - 1) % 26 + 1) != offset) {
+        if (((rid.pageNum - 1) % 26 + 1) != offset) {
             cerr << "Wrong entry output... " << rid.pageNum << " " << rid.slotNum << " " << " - The test failed..." << endl;
             return fail;
         }
         count1++;
         if (count1 % 20 == 0) {
-        	cerr << count1 << " scanned - returned rid: " << rid.pageNum << " " << rid.slotNum << endl;
+            cerr << count1 << " scanned - returned rid: " << rid.pageNum << " " << rid.slotNum << endl;
         }
     }
     cerr << endl;

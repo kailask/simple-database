@@ -16,15 +16,15 @@ int testCase_2(const string &indexFileName, const Attribute &attribute)
     // 1. Open Index file
     // 2. Insert entry **
     // 3. Disk I/O check of Insertion - CollectCounterValues **
-	// 4. print B+ Tree **
+    // 4. print B+ Tree **
     // 5. Close Index file
     // NOTE: "**" signifies the new functions being tested in this test case.
     cerr << endl << "***** In IX Test Case 2 *****" << endl;
 
     RID rid;
-    int key = 100;
-    rid.pageNum = key;
-    rid.slotNum = key+1;
+    int key = 200;
+    rid.pageNum = 500;
+    rid.slotNum = 20;
 
     unsigned readPageCount = 0;
     unsigned writePageCount = 0;
@@ -35,8 +35,6 @@ int testCase_2(const string &indexFileName, const Attribute &attribute)
     unsigned readDiff = 0;
     unsigned writeDiff = 0;
     unsigned appendDiff = 0;
-
-    IX_ScanIterator ix_ScanIterator;
 
     // open index file
     IXFileHandle ixfileHandle;

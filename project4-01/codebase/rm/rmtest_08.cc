@@ -8,7 +8,7 @@ RC TEST_RM_8(const string &tableName, vector<RID> &rids, vector<int> &sizes)
     cout << endl << "***** In RM Test Case 8 *****" << endl;
 
     RID rid; 
-    void *tuple = malloc(2000);
+    void *tuple = malloc(4000);
     int numTuples = 2000;
 
     // GetAttributes

@@ -12,20 +12,20 @@ IndexManager *indexManager;
 int testCase_7(const string &indexFileName, const Attribute &attribute)
 {
     // Functions tested
-    // 1. Open Index File that created by 6
+    // 1. Open Index File that created by test case 6
     // 2. Scan entries NO_OP -- open
     // 3. Scan close
     // 4. Close Index File
     // 5. Destroy Index File
     // NOTE: "**" signifies the new functions being tested in this test case.
-	cerr << endl << "***** In IX Test Case 7 *****" << endl;
+    cerr << endl << "***** In IX Test Case 7 *****" << endl;
 
     RID rid;
     IXFileHandle ixfileHandle;
     IX_ScanIterator ix_ScanIterator;
     unsigned key;
-    int inRidPageNumSum = 0;
-    int outRidPageNumSum = 0;
+    int inRidSlotNumSum = 0;
+    int outRidSlotNumSum = 0;
     unsigned numOfTuples = 1000;
 
     // open index file
@@ -37,9 +37,9 @@ int testCase_7(const string &indexFileName, const Attribute &attribute)
     {
         key = i;
         rid.pageNum = key;
-        rid.slotNum = key+1;
+        rid.slotNum = key * 3;
 
-        inRidPageNumSum += rid.pageNum;
+        inRidSlotNumSum += rid.slotNum;
     }
 
     // scan
@@ -52,14 +52,14 @@ int testCase_7(const string &indexFileName, const Attribute &attribute)
     {
         count++;
 
-    	if (rid.pageNum % 200 == 0) {
+        if (rid.pageNum % 200 == 0) {
             cerr << count << " - Returned rid: " << rid.pageNum << " " << rid.slotNum << endl;
         }
-        outRidPageNumSum += rid.pageNum;
+        outRidSlotNumSum += rid.slotNum;
     }
 
     // scan fail?
-    if (inRidPageNumSum != outRidPageNumSum)
+    if (inRidSlotNumSum != outRidSlotNumSum)
     {
         cerr << "Wrong entries output... The test failed." << endl;
         rc = ix_ScanIterator.close();

@@ -73,7 +73,7 @@ RC TEST_RM_3(const string &tableName, const int nameLength, const string &name, 
 int main()
 {
     // Update Tuple
-    RC rcmain = TEST_RM_3("tbl_employee", 6, "Thomas", 28, 6.5, 6000);
+    RC rcmain = TEST_RM_3("tbl_employee", 4, "Paul", 28, 6.5, 6000);
 
     return rcmain;
 }
