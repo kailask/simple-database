@@ -34,8 +34,8 @@ bool Value::compare(CompOp op, const Value& other) const {
             char *rhs, *lhs;
             memcpy(&rhs_len, data, VARCHAR_LENGTH_SIZE);
             memcpy(&lhs_len, other.data, VARCHAR_LENGTH_SIZE);
-            rhs = static_cast<char*>(data) + rhs_len + VARCHAR_LENGTH_SIZE;
-            lhs = static_cast<char*>(other.data) + lhs_len + VARCHAR_LENGTH_SIZE;
+            rhs = static_cast<char*>(data) + VARCHAR_LENGTH_SIZE;
+            lhs = static_cast<char*>(other.data) + VARCHAR_LENGTH_SIZE;
             auto comp = getOperator<string>(op);
             return comp({rhs, rhs_len}, {lhs, lhs_len});
         }
@@ -118,6 +118,7 @@ Value Tuple::getValue(const string& attr_name) const {
 
 Tuple::Builder::Builder(char* data_, size_t num_attrs_) : num_attrs(num_attrs_), data(data_) {
     data_end = data + static_cast<size_t>(ceil(num_attrs / double(CHAR_BIT)));
+    memset(data, 0, ceil(num_attrs / double(CHAR_BIT)));
 }
 
 //Build tuple if all attributes are set
