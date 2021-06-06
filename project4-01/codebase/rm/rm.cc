@@ -496,8 +496,9 @@ RC RelationManager::destroyIndex(const string &tableName, const string &attribut
     //destroy the index file
     IndexManager *im = IndexManager::instance();
     RC rc;
+    string indexFileName = getIndexName(tableName, attributeName);
 
-    rc = im->destroyFile(getIndexName(tableName, attributeName));
+    rc = im->destroyFile(indexFileName);
     if (rc) return rc;
 
     //delete entry in the catalog
@@ -508,11 +509,19 @@ RC RelationManager::destroyIndex(const string &tableName, const string &attribut
 
     RBFM_ScanIterator rbfm_si;
     vector<string> projection;
-    rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, getIndexName(tableName, attributeName).c_str(), projection, rbfm_si);
+
+    //format the value properly
+    int indexFileLength = indexFileName.length();
+    void *value = malloc(VARCHAR_LENGTH_SIZE + indexFileLength);
+    memcpy(value, &indexFileLength, VARCHAR_LENGTH_SIZE);
+    memcpy((char*)value + VARCHAR_LENGTH_SIZE, indexFileName.c_str(), indexFileLength);
+
+    rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, value, projection, rbfm_si);
 
     RID rid;
     rc = rbfm_si.getNextRecord(rid, NULL);
     if (rc) return rc;
+    free(value);
 
     rbfm->deleteRecord(fh, indexDescriptor, rid);
     rbfm->closeFile(fh);
@@ -797,10 +806,19 @@ RC RelationManager::insertExtension(void *data, vector<Attribute> &recordDescrip
         //if an index pertaining to the attribute exists, then insertEntry
         RBFM_ScanIterator rbfm_si;
         vector<string> projection;
-        rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, getIndexName(tableName, recordDescriptor[i].name).c_str(), projection, rbfm_si);
+
+        //format the value properly
+        string indexFileName = getIndexName(tableName, recordDescriptor[i].name);
+        int indexFileLength = indexFileName.length();
+        void *value = malloc(VARCHAR_LENGTH_SIZE + indexFileLength);
+        memcpy(value, &indexFileLength, VARCHAR_LENGTH_SIZE);
+        memcpy((char*)value + VARCHAR_LENGTH_SIZE, indexFileName.c_str(), indexFileLength);
+
+        rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, value, projection, rbfm_si);
 
         RID scanRID;
         rc = rbfm_si.getNextRecord(scanRID, NULL);
+        free(value);
 
         if (rc == SUCCESS) {
             IXFileHandle ix;
@@ -868,10 +886,19 @@ RC RelationManager::deleteExtension(void *data, vector<Attribute> &recordDescrip
         //if an index pertaining to the attribute exists then deleteEntry
         RBFM_ScanIterator rbfm_si;
         vector<string> projection;
-        rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, getIndexName(tableName, recordDescriptor[i].name).c_str(), projection, rbfm_si);
+
+        //format the value properly
+        string indexFileName = getIndexName(tableName, recordDescriptor[i].name);
+        int indexFileLength = indexFileName.length();
+        void *value = malloc(VARCHAR_LENGTH_SIZE + indexFileLength);
+        memcpy(value, &indexFileLength, VARCHAR_LENGTH_SIZE);
+        memcpy((char*)value + VARCHAR_LENGTH_SIZE, indexFileName.c_str(), indexFileLength);
+
+        rc = rbfm->scan(fh, indexDescriptor, INDEXES_COL_FILE_NAME, EQ_OP, value, projection, rbfm_si);
 
         RID scanRID;
         rc = rbfm_si.getNextRecord(scanRID, NULL);
+        free(value);
 
         if (rc == SUCCESS) {
             IXFileHandle ix;
