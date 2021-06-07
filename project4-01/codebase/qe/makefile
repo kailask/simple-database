@@ -37,6 +37,6 @@ $(CODEROOT)/ix/libix.a:
 
 .PHONY: clean
 clean:
-	-rm qetest_01 qetest_02 qetest_03 qetest_04 qetest_05 qetest_06 qetest_09 qetest_10 *.a *.o *~ Tables* Columns* left* right* large*
+	-rm qetest_01 qetest_02 qetest_03 qetest_04 qetest_05 qetest_06 qetest_09 qetest_10 *.a *.o *~ Tables* Columns* left* right* large* Indexes*
 	$(MAKE) -C $(CODEROOT)/rm clean
 	$(MAKE) -C $(CODEROOT)/ix clean 
