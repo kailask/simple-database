@@ -111,7 +111,7 @@ Value Tuple::getValue(const string& attr_name) const {
     }
 
     //Invalid attribute name
-    return {.data = NULL};
+    return Value{.data = NULL};
 }
 
 // Tuple::Builder ============================================================
