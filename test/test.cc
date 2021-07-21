@@ -26,13 +26,13 @@ void print_right_tuple(void *data) {
 
 // SELECT * from left
 void print_left() {
-    TableScan *input = new TableScan(*rm, "left");
-
-    // Go over the data through iterator
     void *data = malloc(bufSize);
     cerr << "==========================\n";
     cerr << "left.A | left.B | left.C | \n";
 
+    TableScan *input = new TableScan(*rm, "left");
+
+    // Go over the data through iterator
     while (input->getNextTuple(data) != QE_EOF) {
         //Print tuple
         print_left_tuple(data);
@@ -44,13 +44,13 @@ void print_left() {
 
 // SELECT * from right
 void print_right() {
-    TableScan *input = new TableScan(*rm, "right");
-
-    // Go over the data through iterator
     void *data = malloc(bufSize);
     cerr << "=============================\n";
     cerr << "right.B | right.C | right.D | \n";
 
+    TableScan *input = new TableScan(*rm, "right");
+
+    // Go over the data through iterator
     while (input->getNextTuple(data) != QE_EOF) {
         print_right_tuple(data);
 
@@ -61,6 +61,10 @@ void print_right() {
 
 // SELECT * from left, right WHERE left.C = right.C
 void print_join() {
+    void *data = malloc(bufSize);
+    cerr << "========================================================\n";
+    cerr << "left.A | left.B | left.C | right.B | right.C | right.D | \n";
+
     TableScan *leftIn = new TableScan(*rm, "left");
     IndexScan *rightIn = new IndexScan(*rm, "right", "C");
 
@@ -75,13 +79,9 @@ void print_join() {
     INLJoin *inlJoin = new INLJoin(leftIn, rightIn, cond);
 
     // Go over the data through iterator
-    void *data = malloc(bufSize);
-    cerr << "========================================================\n";
-    cerr << "left.A | left.B | left.C | right.B | right.C | right.D | \n";
-
     while (inlJoin->getNextTuple(data) != QE_EOF) {
         print_left_tuple(data);
-        print_right_tuple(data + 12);
+        print_right_tuple((char *)data + 12);
 
         cerr << endl;
         memset(data, 0, bufSize);

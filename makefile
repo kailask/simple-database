@@ -25,7 +25,12 @@ all: ./test/test
 
 .PHONY: clean
 clean:
-	-rm test
-	-rm *.a *.o *~ Tables* Columns* left* right* large* Indexes*
+	-rm Tables* Columns* left* right* Indexes*
 	-rm test/*.o test/test
 	-$(MAKE) -C ./qe clean
+
+.PHONY: test
+test:
+	$(MAKE) -s
+	-test/test
+	$(MAKE) -s clean

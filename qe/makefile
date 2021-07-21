@@ -16,6 +16,6 @@ qe.o: qe.h
 
 .PHONY: clean
 clean:
-	-rm *.a *.o *~
+	-rm *.a *.o
 	-$(MAKE) -C ../rm clean
 	-$(MAKE) -C ../ix clean 

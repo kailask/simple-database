@@ -16,5 +16,5 @@ rm.o: rm.h
 
 .PHONY: clean
 clean:
-	-rm *.a *.o *~ 
+	-rm *.a *.o
 	-$(MAKE) -C ../rbf clean

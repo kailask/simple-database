@@ -17,4 +17,4 @@ librbf.a: librbf.a(rbfm.o)
 
 .PHONY: clean
 clean:
-	-rm *.a *.o *~
+	-rm *.a *.o
