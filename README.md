@@ -6,7 +6,9 @@ This simple database provides programmatic access through a subset of SQL to sto
 
 The database is divided into 5 components. Each is responsable for a different layer and together emulate a simple SQL database. Most features are not supported including multiple users and transactions.
 
-<img align="center" src="assets/overview.png" alt="Overview"/>
+<p align="center">
+    <img src="assets/overview.png" alt="Overview"/>
+</p>
 
 1. [Page File Manager](rbf/) handles storing of arbitrary data in pages of size 4KiB in files that are created as needed.
 2. [Record File Manager](rbf/) manages records for a given relation creating new pages as needed. It provides an API for scanning records in a relation.
@@ -36,7 +38,9 @@ The database is divided into layers to simplify implementation. At the lowest le
 
 The data in a relation is maintained by the Record File Manager. All records in a relation must have the same number and type of fields but records have variable length in the case of strings or null values. Each record is prefaced by a null bitmap and offsets for each field, followed by the data. Allowed types are `int`, `float`, and `varchar`.
 
-<img align="center" src="assets/record.png" alt="Record"/>
+<p align="center">
+    <img src="assets/record.png" alt="Record"/>
+</p>
 
 This design allows constant time lookup of any attribute in the record. The records are stored within pages whose layout is managed by the Record File Manager
 
@@ -46,9 +50,11 @@ Even if the database is empty there will at minimum exists a `Tables` and `Colum
 
 ### Indexes
 
-Since records within a relation are not ordered indexes exist to provide faster lookup of records. An index contains a reference to every record in its associated relation with the references sorted by a given attribute. This allows for quicker lookups based on that attribute. Currently only equality is supported. An index exists as a tree of pages with leaf pages containing the actual record references and non-leaf pages containing references to other pages.
+Since records within a relation are not ordered indexes exist to provide faster lookup of records. An index contains a reference to every record in its associated relation with the references sorted by a given attribute. This allows for quicker lookups based on that attribute. Currently only equality is supported. An index exists as a tree of pages with leaf pages containing the actual record references and non-leaf pages containing references to other pages in the index.
 
-<img align="center" src="assets/index.png" alt="Index"/>
+<p align="center">
+    <img src="assets/index.png" alt="Index"/>
+</p>
 
 ### Queries
 
@@ -62,7 +68,9 @@ To perform queries on the database the query engine provides a helpful API. All 
 
 For example, to construct the query `SELECT C from left, right WHERE left.C = right.C` we could use `TableScan`, `IndexScan`, `INLJoin`, and `Project`.
 
-<img align="center" src="assets/query.png" alt="Query"/>
+<p align="center">
+    <img align="center" src="assets/query.png" alt="Query"/>
+</p>
 
 See [test/test.cc](test/test.cc) for an example of this.
 
